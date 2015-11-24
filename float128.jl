@@ -263,12 +263,24 @@ end
 function string(x::Float128)
     lng = 64 
     buf = Array(UInt8, lng + 1)
-    lng = ccall((:stringq,:libfloat128), Int32, (Ptr{UInt8}, Culong, Ptr{UInt8}, Float128,), buf, lng + 1, "%.33Qe", x)
+    lng = ccall((:stringq,:libfloat128), Int32, (Ptr{UInt8}, Culong, Ptr{UInt8}, Float128,), buf, lng + 1, "%.35Qe", x)
     return bytestring(pointer(buf), lng)
 end
 
 print(io::IO, b::Float128) = print(io, string(b))
 show(io::IO, b::Float128) = print(io, string(b))
 showcompact(io::IO, b::Float128) = print(io, string(b))
+
+const ROUNDING_MODE = Cint[0]
+
+function convert(::Type{BigFloat}, x::Float128)
+    z = BigFloat()
+    ccall((:mpfr_set_float128_xxx, :libfloat128), Int32, (Ptr{BigFloat}, Float128, Int32), &z, x, ROUNDING_MODE[end])
+    return z
+end
+
+convert(::Type{Float128}, x::BigFloat) =
+    ccall((:mpfr_get_float128_xxx, :libfloat128), Float128, (Ptr{BigFloat},Int32), &x, ROUNDING_MODE[end])
+
 
 end

@@ -1,35 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <quadmath.h>
-
-
-typedef union
-{
-    __float128 value;
-
-    struct{
-        uint64_t u0;
-        uint64_t u1;
-    } words64;
-
-} myfloat128;
-
-typedef union
-{
-    __complex128 value;
-
-    struct{
-        uint64_t u0;
-        uint64_t u1;
-        uint64_t u2;
-        uint64_t u3;
-    } words64;
-
-} mycomplex128;
-
-
-#define F(x) (x.value)
-
+#include "float128.h"
 
 myfloat128 convert_qd(double a) { myfloat128 res; F(res) = a; return res; } 
 myfloat128 convert_qui(unsigned long a) {  myfloat128 res; F(res) = a; return res; }
