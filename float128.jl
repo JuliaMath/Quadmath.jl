@@ -12,7 +12,8 @@ import
           ceil, floor, trunc, round, fma, 
           atan2, copysign, max, min, hypot,
           gamma, lgamma,
-          abs, imag, real, conj
+          abs, imag, real, conj, angle, cis,
+          eps, realmin, realmax
 
 
 import Base.GMP: ClongMax, CulongMax, CdoubleMax
@@ -64,9 +65,6 @@ promote_rule{T<:AbstractFloat}(::Type{Float128},::Type{T}) = Float128
 function tryparse(::Type{Float128}, s::AbstractString, base::Int=0)
     Nullable(ccall((:set_str_q, :libfloat128), Float128, (Cstring, ), s))
 end
-
-    
-
 
 # Basic arithmetic without promotion
 for (fJ, fC) in ((:+,:add), (:-,:sub), (:/,:div), (:(*),:mul))
@@ -206,6 +204,14 @@ function ^(x::Float128, y::Float128)
     ccall((:pow_q, :libfloat128), Float128, (Float128, Float128,), x, y)
 end
 
+# constants
+eps(::Type{Float128}) = ccall(("eps_q", :libfloat128), Float128, (), )
+realmin(::Type{Float128}) = ccall(("realmin_q", :libfloat128), Float128, (), )
+realmax(::Type{Float128}) = ccall(("realmax_q", :libfloat128), Float128, (), )
+convert(::Type{Float128}, ::Irrational{:π}) =  ccall(("pi_q", :libfloat128), Float128, (), )
+convert(::Type{Float128}, ::Irrational{:e}) =  ccall(("e_q", :libfloat128), Float128, (), )
+
+
 
 # unary functions
 for f in (:acos, :acosh, :asin, :asinh, :atan, :atanh, :cosh, :cos,
@@ -242,13 +248,16 @@ for f in (:acos, :acosh, :asin, :asinh, :atan, :atanh, :cosh, :cos,
 end
 
 # unary complex functions with real result
-for f in (:abs, :imag, :real, )
+for f in (:abs, :imag, :real, :angle )
     @eval function $f(x::Float128)
         ccall(($(string(:c,f,:_q)), :libfloat128), Float128, (Complex256, ), x)
     end
 end
 
-# arg, expi, proj
+function cis(x::Float128)
+    ccall((:ccis_q, :libfloat128), Complex256, (Float128,), x)
+end
+
 
 
 function string(x::Float128)

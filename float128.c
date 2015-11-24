@@ -180,10 +180,10 @@ myfloat128 acosh_q(myfloat128 x) { myfloat128 res; F(res) = acoshq (F(x)); retur
 myfloat128 asin_q(myfloat128 x) { myfloat128 res; F(res) = asinq (F(x)); return res; }
 myfloat128 asinh_q(myfloat128 x) { myfloat128 res; F(res) = asinhq (F(x)); return res; }
 myfloat128 atan_q(myfloat128 x) { myfloat128 res; F(res) = atanq (F(x)); return res; }
-myfloat128 atanhq_q(myfloat128 x) { myfloat128 res; F(res) = atanhq (F(x)); return res; }
-myfloat128 atan2q_q(myfloat128 x, myfloat128 y) {  myfloat128 res; F(res) = atan2q (F(x), F(y)); return res; }
-myfloat128 cbrtq_q(myfloat128 x) { myfloat128 res; F(res) = cbrtq (F(x)); return res; }
-myfloat128 ceilq_q(myfloat128 x) { myfloat128 res; F(res) = ceilq (F(x)); return res; }
+myfloat128 atanh_q(myfloat128 x) { myfloat128 res; F(res) = atanhq (F(x)); return res; }
+myfloat128 atan2_q(myfloat128 x, myfloat128 y) {  myfloat128 res; F(res) = atan2q (F(x), F(y)); return res; }
+myfloat128 cbrt_q(myfloat128 x) { myfloat128 res; F(res) = cbrtq (F(x)); return res; }
+myfloat128 ceil_q(myfloat128 x) { myfloat128 res; F(res) = ceilq (F(x)); return res; }
 myfloat128 copysign_q(myfloat128 x, myfloat128 y) { myfloat128 res; F(res) = copysignq (F(x), F(y)); return res; }
 myfloat128 cosh_q(myfloat128 x) { myfloat128 res; F(res) = coshq (F(x)); return res; }
 myfloat128 cos_q(myfloat128 x) { myfloat128 res; F(res) = cosq (F(x)); return res; }
@@ -244,7 +244,7 @@ myfloat128 bessely_q(int n, myfloat128 x) { myfloat128 res; F(res) = ynq (n, F(x
 
 
 myfloat128 cabs_q (mycomplex128 z) { myfloat128 res; F(res) = cabsq(F(z)); return res; };
-myfloat128 carg_q (mycomplex128 z) { myfloat128 res; F(res) = cargq(F(z)); return res; };
+myfloat128 cangle_q (mycomplex128 z) { myfloat128 res; F(res) = cargq(F(z)); return res; };
 myfloat128 cimag_q (mycomplex128 z) { myfloat128 res; F(res) = cimagq(F(z)); return res; };
 myfloat128 creal_q (mycomplex128 z) { myfloat128 res; F(res) = crealq(F(z)); return res; };
 mycomplex128 cacos_q (mycomplex128 z) { mycomplex128 res; F(res) = cacosq(F(z)); return res; };
@@ -256,7 +256,7 @@ mycomplex128 catanh_q (mycomplex128 z) { mycomplex128 res; F(res) = catanhq(F(z)
 mycomplex128 ccos_q (mycomplex128 z) { mycomplex128 res; F(res) = ccosq(F(z)); return res; };
 mycomplex128 ccosh_q (mycomplex128 z) { mycomplex128 res; F(res) = ccoshq(F(z)); return res; };
 mycomplex128 cexp_q (mycomplex128 z) { mycomplex128 res; F(res) = cexpq(F(z)); return res; };
-mycomplex128 cexpi_q (myfloat128 z) { mycomplex128 res; F(res) = cexpiq(F(z)); return res; };
+mycomplex128 ccis_q (myfloat128 z) { mycomplex128 res; F(res) = cexpiq(F(z)); return res; };
 mycomplex128 clog_q (mycomplex128 z) { mycomplex128 res; F(res) = clogq(F(z)); return res; };
 mycomplex128 clog10_q (mycomplex128 z) { mycomplex128 res; F(res) = clog10q(F(z)); return res; };
 mycomplex128 cconj_q (mycomplex128 z) { mycomplex128 res; F(res) = conjq(F(z)); return res; };
@@ -269,7 +269,11 @@ mycomplex128 ctan_q (mycomplex128 z) { mycomplex128 res; F(res) = ctanq(F(z)); r
 mycomplex128 ctanh_q (mycomplex128 z) { mycomplex128 res; F(res) = ctanhq(F(z)); return res; };
 
 
-
+myfloat128 eps_q (void) {myfloat128 res; F(res) = FLT128_EPSILON; return res; };
+myfloat128 realmax_q (void) {myfloat128 res; F(res) = FLT128_MAX; return res; };
+myfloat128 realmin_q (void) {myfloat128 res; F(res) = FLT128_MIN; return res; };
+myfloat128 pi_q (void) {myfloat128 res; F(res) =  M_PIq; return res; };
+myfloat128 e_q (void) {myfloat128 res; F(res) = M_Eq; return res; };
 
 
 
