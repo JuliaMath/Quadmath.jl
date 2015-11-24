@@ -12,12 +12,12 @@ float128.o: float128.c
 
 set_float128.o: set_float128.c
 	gcc -O3 -fpic -c -o set_float128.o  \
-            -I$(INCGMP) -I$(INCMPFR) -I$(INCGMP) \
+            -I$(INCGMP) -I$(INCMPFR) -I$(INCMPARAM) \
             set_float128.c         
 
 get_float128.o: get_float128.c
 	gcc -O3 -fpic -c -o get_float128.o  \
-            -I$(INCGMP) -I$(INCMPFR) -I$(INCGMP) \
+            -I$(INCGMP) -I$(INCMPFR) -I$(INCMPARAM) \
             get_float128.c         
 
 libfloat128.so: float128.o set_float128.o get_float128.o
