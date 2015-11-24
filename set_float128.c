@@ -23,6 +23,8 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 
 #define MPFR_WANT_FLOAT128
 #define IEEE_FLOAT128_MANT_DIG 113 
+#define MPFR_USE_THREAD_SAFE
+
 
 #include <float.h> /* for DBL_MAX */
 

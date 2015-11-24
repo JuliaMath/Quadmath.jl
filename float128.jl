@@ -275,7 +275,7 @@ const ROUNDING_MODE = Cint[0]
 
 function convert(::Type{BigFloat}, x::Float128)
     z = BigFloat()
-    ccall((:mpfr_set_float128_xxx, :libfloat128), Int32, (Ptr{BigFloat}, Float128, Int32), &z, x, ROUNDING_MODE[end])
+    res = ccall((:mpfr_set_float128_xxx, :libfloat128), Int32, (Ptr{BigFloat}, Float128, Int32), &z, x, ROUNDING_MODE[end])
     return z
 end
 
