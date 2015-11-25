@@ -229,6 +229,11 @@ for f in (:atan2, :copysign,  :max, :min, :hypot,)
     end
 end
 
+for f in (:besselj, :bessely,)
+    @eval function $f(n::Integer, x::Float128)
+        ccall(($(string(f,:_q)), :libfloat128), Float128, (Cint, Float128), n, x)
+    end
+end
 
 function -(x::Complex256)
     ccall((:cneg_q, :libfloat128), Complex256, (Complex256,), x)
