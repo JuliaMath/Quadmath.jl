@@ -11,10 +11,10 @@ INCMPARAM =  $(HOME)/LibDownloads/mpfr-3.1.3/src/x86_64/core2
 #location of gmp.h:
 INCGMP = $(HOME)/LibDownloads/gmp-6.1.0/
 
-#location of shared quadmath library:
+#path to shared quadmath library:
 LIBQUADMATH = /usr/lib/x86_64-linux-gnu/libquadmath.so.0
 
-#location of shared mpfr library used by Julia:
+#path to shared mpfr library used by Julia:
 LIBMPFR =  /usr/lib/x86_64-linux-gnu/libmpfr.so.4
 
 
