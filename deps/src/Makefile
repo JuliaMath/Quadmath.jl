@@ -22,8 +22,9 @@ LIBMPFR =  /usr/lib/x86_64-linux-gnu/libmpfr.so.4
 
 
 OBJS = quadmath_wrapper.o get_float128.o  set_float128.o
-LIBS += $(LIBMPFR) -lquadmath -lm
+LIBS += $(LIBMPFR) -lquadmath 
 #LIBS += -lquadmath -lm
+INC = ../include
 
 # Figure out OS and architecture
 OS = $(shell uname)
@@ -51,13 +52,15 @@ quadmath_wrapper.o: quadmath_wrapper.c quadmath_wrapper.h
 
 set_float128.o: set_float128.c quadmath_wrapper.h
 	gcc -O3 -fpic -c -o set_float128.o  \
-            -I$(INCGMP) -I$(INCMPFR) -I$(INCMPARAM) \
-            set_float128.c         
+            -I$(INC) set_float128.c         
+#            -I$(INCGMP) -I$(INCMPFR) -I$(INCMPARAM) \
+#            set_float128.c         
 
 get_float128.o: get_float128.c quadmath_wrapper.h
 	gcc -O3 -fpic -c -o get_float128.o  \
-            -I$(INCGMP) -I$(INCMPFR) -I$(INCMPARAM) \
-            get_float128.c         
+            -I$(INC) set_float128.c         
+#            -I$(INCGMP) -I$(INCMPFR) -I$(INCMPARAM) \
+#            get_float128.c         
         
 
 libquadmath_wrapper.$(SHLIB_EXT): $(OBJS)
