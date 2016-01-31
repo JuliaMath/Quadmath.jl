@@ -58,7 +58,7 @@ set_float128.o: set_float128.c quadmath_wrapper.h
 
 get_float128.o: get_float128.c quadmath_wrapper.h
 	gcc -O3 -fpic -c -o get_float128.o  \
-            -I$(INC) set_float128.c         
+            -I$(INC) get_float128.c         
 #            -I$(INCGMP) -I$(INCMPFR) -I$(INCMPARAM) \
 #            get_float128.c         
         
