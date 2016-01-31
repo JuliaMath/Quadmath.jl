@@ -22,7 +22,7 @@ LIBMPFR =  /usr/lib/x86_64-linux-gnu/libmpfr.so.4
 
 
 OBJS = quadmath_wrapper.o get_float128.o  set_float128.o
-#LIBS += -lquadmath -L/usr/lib/x86_64-linux-gnu -lmpfr -lgmp -lm
+LIBS += $(LIBMPFR) -lquadmath -lm
 #LIBS += -lquadmath -lm
 
 # Figure out OS and architecture
