@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <quadmath.h>
-#include "float128.h"
+#include "quadmath_wrapper.h"
 
 myfloat128 convert_qd(double a) { myfloat128 res; F(res) = a; return res; } 
 myfloat128 convert_qui(unsigned long a) {  myfloat128 res; F(res) = a; return res; }

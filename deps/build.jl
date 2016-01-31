@@ -7,5 +7,5 @@ if (!ispath("../usr/lib"))
     run(`mkdir ../usr/lib`)
 end
 
-run(`mv libfloat128.$(Libdl.dlext) ../usr/lib`)
+run(`mv libquadmath_wrapper.$(Libdl.dlext) ../usr/lib`)
 

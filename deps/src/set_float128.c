@@ -22,6 +22,8 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
 #define MPFR_WANT_FLOAT128
+#ifdef MPFR_WANT_FLOAT128
+
 #define IEEE_FLOAT128_MANT_DIG 113 
 #define MPFR_USE_THREAD_SAFE
 
@@ -31,7 +33,6 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
 
-#ifdef MPFR_WANT_FLOAT128
 
 int
 mpfr_set_float128 (mpfr_ptr r, __float128 d, mpfr_rnd_t rnd_mode)
@@ -184,7 +185,7 @@ mpfr_set_float128 (mpfr_ptr r, __float128 d, mpfr_rnd_t rnd_mode)
 #endif /* MPFR_WANT_FLOAT128 */
 
 #include <stdint.h>
-#include "float128.h"
+#include "quadmath_wrapper.h"
 int
 mpfr_set_float128_xxx (mpfr_ptr r, myfloat128 d, mpfr_rnd_t rnd_mode)
 {

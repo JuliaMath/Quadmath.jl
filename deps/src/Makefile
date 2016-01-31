@@ -21,7 +21,7 @@ LIBQUADMATH = /usr/lib/x86_64-linux-gnu/libquadmath.so.0
 LIBMPFR =  /usr/lib/x86_64-linux-gnu/libmpfr.so.4
 
 
-OBJS = float128.o get_float128.o  set_float128.o
+OBJS = quadmath_wrapper.o get_float128.o  set_float128.o
 #LIBS += -lquadmath -L/usr/lib/x86_64-linux-gnu -lmpfr -lgmp -lm
 #LIBS += -lquadmath -lm
 
@@ -41,26 +41,26 @@ else
 endif
 
 
-shared_lib: libfloat128.$(SHLIB_EXT)
+shared_lib: libquadmath_wrapper.$(SHLIB_EXT)
 
 %.c.o: %.c %.h
 	$(CC) $< -fPIC -c -o $@ $(INC) $(CFLAGS) $(FLAGS)
 
-float128.o: float128.c float128.h
-	gcc  -O3 -g -fPIC -c -o float128.o float128.c 
+quadmath_wrapper.o: quadmath_wrapper.c quadmath_wrapper.h
+	gcc  -O3 -g -fPIC -c -o quadmath_wrapper.o quadmath_wrapper.c 
 
-set_float128.o: set_float128.c float128.h
+set_float128.o: set_float128.c quadmath_wrapper.h
 	gcc -O3 -fpic -c -o set_float128.o  \
             -I$(INCGMP) -I$(INCMPFR) -I$(INCMPARAM) \
             set_float128.c         
 
-get_float128.o: get_float128.c float128.h
+get_float128.o: get_float128.c quadmath_wrapper.h
 	gcc -O3 -fpic -c -o get_float128.o  \
             -I$(INCGMP) -I$(INCMPFR) -I$(INCMPARAM) \
             get_float128.c         
         
 
-libfloat128.$(SHLIB_EXT): $(OBJS)
+libquadmath_wrapper.$(SHLIB_EXT): $(OBJS)
 	$(CC) $(OBJS) -rdynamic -shared -o $@ $(LDFLAGS) $(LIBS)
 
 clean:
