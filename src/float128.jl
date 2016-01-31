@@ -1,6 +1,6 @@
 module float128
 
-export Float128, Complex256
+export Complex256
 
 import 
     Base: +, -, (*), /, <, <=, ==, >, >=, ^, convert, promote_rule,
@@ -18,7 +18,7 @@ import
 
 import Base.GMP: ClongMax, CulongMax, CdoubleMax
 
-bitstype 128 Float128  <: AbstractFloat
+#bitstype 128 Float128  <: AbstractFloat # this is in base/boot.jl
 #Note: with "<: AbstracFloat" multiplication of two Float128 numbers
 #mysteriously doesn't work!
 

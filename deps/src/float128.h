@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <quadmath.h> 
 
+#if 1
 typedef union
 {
     __float128 value;
@@ -28,3 +29,11 @@ typedef union
 
 #define F(x) (x.value)
 
+#else
+
+typedef __float128  myfloat128;
+typedef __complex128  mycomplex128;
+
+#define F(x) (x)
+
+#endif
