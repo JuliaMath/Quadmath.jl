@@ -3,7 +3,7 @@ module Quadmath
 export Float128, Complex256
 
 import 
-    Base: +, -, (*), /, <, <=, ==, >, >=, ^, convert, promote_rule,
+    Base: (*), +, -, /,  <, <=, ==, >, >=, ^, convert, promote_rule,
           string, print, show, showcompact, tryparse, 
           acos, acosh, asin, asinh, atan, atanh, cosh, cos,
           erf, erfc, expm1, log, log2, log10, sin, sinh, sqrt,
@@ -18,7 +18,7 @@ import
 
 import Base.GMP: ClongMax, CulongMax, CdoubleMax
 
-bitstype 128 Float128  <: AbstractFloat # this is in base/boot.jl
+bitstype 128 Float128 <: AbstractFloat 
 #Note: with "<: AbstracFloat" multiplication of two Float128 numbers
 #mysteriously doesn't work!
 
@@ -26,6 +26,11 @@ typealias Complex256 Complex{Float128}
 
 const libquadmath_wrapper = joinpath(dirname(@__FILE__),
                             "..", "deps", "usr", "lib", "libquadmath_wrapper.so")
+
+
+widen(::Type{Float64}) = Float128
+widen(::Type{Float128}) = BigFloat
+
 
 convert(::Type{Float128}, x::Float128) = x
 
@@ -59,8 +64,11 @@ call(::Type{Float16}, x::Float128, r::RoundingMode) =
     convert(Float16, call(Float32, x, r))
 
 
-promote_rule{T<:Real}(::Type{Float128}, ::Type{T}) = Float128
-promote_rule{T<:AbstractFloat}(::Type{Float128},::Type{T}) = Float128
+#promote_rule{T<:Real}(::Type{Float128}, ::Type{T}) = Float128
+#promote_rule{T<:AbstractFloat}(::Type{Float128},::Type{T}) = Float128
+
+promote_rule(::Type{Float128}, ::Type{Float32}) = Float128
+promote_rule(::Type{Float128}, ::Type{Float64}) = Float128
 
 
 function tryparse(::Type{Float128}, s::AbstractString, base::Int=0)
@@ -68,12 +76,18 @@ function tryparse(::Type{Float128}, s::AbstractString, base::Int=0)
 end
 
 # Basic arithmetic without promotion
-for (fJ, fC) in ((:+,:add), (:-,:sub), (:/,:div), (:(*),:mul))
-    @eval begin
-        #Float128
-        function ($fJ)(x::Float128, y::Float128)
-            ccall(($(string(fC,:_q)),libquadmath_wrapper), Float128, (Float128, Float128), x, y)
+for (fJ, fC) in ((:+,:add), (:-,:sub), (:/,:div), (:*,:mul))
+
+    #Float128
+    if (fC!=(:mul)) # 1st part of mysterious hack to get multiplication work 
+        @eval begin
+            function ($fJ)(x::Float128, y::Float128)
+               ccall(($(string(fC,:_q)),libquadmath_wrapper), Float128, (Float128, Float128), x, y)
+            end
         end
+    end    
+
+    @eval begin
 
         #Unsigned Integer
         function ($fJ)(x::Float128, y::CulongMax)
@@ -103,9 +117,12 @@ for (fJ, fC) in ((:+,:add), (:-,:sub), (:/,:div), (:(*),:mul))
         end
     end
 end
+# 1st part of mysterious hack to get multiplication work 
+# Defining * in this way works, very strange...
+*(x::Float128, y::Float128) = ccall(("mul_q",libquadmath_wrapper), Float128, (Float128, Float128), x, y)
 
 # Basic complex arithmetic without promotion
-for (fJ, fC) in ((:+,:cadd), (:-,:csub), (:/,:cdiv), (:(*),:cmul))
+for (fJ, fC) in ((:+,:cadd), (:-,:csub), (:/,:cdiv), (:*,:cmul))
     @eval begin
         #Float128
         function ($fJ)(x::Complex256, y::Complex256)
