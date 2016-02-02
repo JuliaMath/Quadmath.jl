@@ -13,5 +13,47 @@ symlink(joinpath(homedir(), ".julia/v0.4/Quadmath/examples/"), joinpath(homedir(
 ```
 Then 'Quadmath_examples' will be listed in the JuliaBox home screen. The examples contain among others
 + [BesselZeros.ipynb](https://github.com/HaraldHofstaetter/Quadmath.jl/blob/master/examples/BesselZeros.ipynb):
-  In this notebook it is demonstrated that Float128 is about 4 times faster than BigFloat with 113 bit precision 
-  (the precision of Float128).
+  In this notebook it is demonstrated that `Float128` is about 4 times faster than `BigFloat` with 113 bit precision 
+  (the precision of `Float128`).
+
+##Bugs
++  `ccall` does not treat parameters and returning values of Julia type `Float128` as C type `__float128` as it would
+    be appropriate. 
+
+    Unfortunately, this is a bug which cannot easily be fixed. 
+    The [x86-64 Application Binary Interface](http://www.x86-64.org/documentation.html) 
+    says that parameters and returning values of type `__float128` should be passed preferably in the (128 bit long) SSE       floating point registers `xmm0`,...,`xmm7`. However, for the datatype `Float128` defined as
+    ```julia
+    bitstype 128 Float128 <: AbstractFloat
+    ```
+    in [Quadmath.jl](https://github.com/HaraldHofstaetter/Quadmath.jl/blob/master/src/Quadmath.jl), 
+    `ccall` seems to use the same calling convention as for something like 
+    ```c
+    struct{ 
+        uint64_t u0; 
+        uint64_t u1;
+    } words64;
+    ``` 
+    in C.
+    
+    A remedy is to implement a wrapper function for each external function with `__float128` parameters or return values,
+    that you want to call by `ccall`. Such a wrapper takes parameters `x` of type `myfloat128` declared as
+    ```c
+    typedef union
+    {
+      __float128 value;
+
+      struct{
+        uint64_t u0;
+        uint64_t u1;
+      } words64;
+    } myfloat128;
+    ```
+    and calls the original function with `x.value` as actual parameter for the coorresponding formal parameter of type
+    `__float128`. 
+    This is eaxtly the technique we use in 
+    [quadmath_wrapper.c](https://github.com/HaraldHofstaetter/Quadmath.jl/blob/master/deps/src/)
+    to call the functions of the [libquadmath](https://gcc.gnu.org/onlinedocs/libquadmath/) library.
+    
+
+
