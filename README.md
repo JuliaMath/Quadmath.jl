@@ -52,7 +52,7 @@ Then 'Quadmath_examples' will be listed in the JuliaBox home screen. The example
     and calls the original function with `x.value` as actual parameter for the coorresponding formal parameter of type
     `__float128`. 
     This is eaxtly the technique we use in 
-    [quadmath_wrapper.c](https://github.com/HaraldHofstaetter/Quadmath.jl/blob/master/deps/src/)
+    [quadmath_wrapper.c](https://github.com/HaraldHofstaetter/Quadmath.jl/blob/master/deps/src/quadmath_wrapper.c)
     to call the functions of the [libquadmath](https://gcc.gnu.org/onlinedocs/libquadmath/) library.
     
 
