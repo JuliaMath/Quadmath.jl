@@ -1,3 +1,6 @@
+# This file is modelled after https://github.com/JuliaLang/julia/blob/master/base/mpfr.jl
+# which implements the BigFloat type
+
 module Quadmath
 
 export Float128, Complex256
@@ -19,18 +22,14 @@ import
 import Base.GMP: ClongMax, CulongMax, CdoubleMax
 
 bitstype 128 Float128 <: AbstractFloat 
-#Note: with "<: AbstracFloat" multiplication of two Float128 numbers
-#mysteriously doesn't work!
 
 typealias Complex256 Complex{Float128}
 
 const libquadmath_wrapper = joinpath(dirname(@__FILE__),
                             "..", "deps", "usr", "lib", "libquadmath_wrapper.so")
 
-
 widen(::Type{Float64}) = Float128
 widen(::Type{Float128}) = BigFloat
-
 
 convert(::Type{Float128}, x::Float128) = x
 
@@ -63,13 +62,11 @@ call(::Type{Float32}, x::Float128, r::RoundingMode) =
 call(::Type{Float16}, x::Float128, r::RoundingMode) =
     convert(Float16, call(Float32, x, r))
 
-
 #promote_rule{T<:Real}(::Type{Float128}, ::Type{T}) = Float128
 #promote_rule{T<:AbstractFloat}(::Type{Float128},::Type{T}) = Float128
 
 promote_rule(::Type{Float128}, ::Type{Float32}) = Float128
 promote_rule(::Type{Float128}, ::Type{Float64}) = Float128
-
 
 function tryparse(::Type{Float128}, s::AbstractString, base::Int=0)
     Nullable(ccall((:set_str_q, libquadmath_wrapper), Float128, (Cstring, ), s))
@@ -117,7 +114,7 @@ for (fJ, fC) in ((:+,:add), (:-,:sub), (:/,:div), (:*,:mul))
         end
     end
 end
-# 1st part of mysterious hack to get multiplication work 
+# 2nd part of mysterious hack to get multiplication work 
 # Defining * in this way works, very strange...
 *(x::Float128, y::Float128) = ccall(("mul_q",libquadmath_wrapper), Float128, (Float128, Float128), x, y)
 
@@ -168,9 +165,6 @@ for (fJ, fC) in ((:+,:cadd), (:-,:csub), (:/,:cdiv), (:*,:cmul))
     end
 end
 
-
-
-
 # comparisons
 for (fJ, fC) in ((:<,:less), (:<=,:less_equal), (:(==),:equal), (:>=,:greater_equal), (:>,:greater))
     @eval begin
@@ -208,11 +202,9 @@ for (fJ, fC) in ((:<,:less), (:<=,:less_equal), (:(==),:equal), (:>=,:greater_eq
     end
 end
 
-
 function fma(x::Float128, y::Float128, z::Float128)
     ccall(("fma_q",libquadmath_wrapper), Float128, (Float128, Float128, Float128, ), x, y, z)
 end
-
 
 function -(x::Float128)
     ccall((:neg_q, libquadmath_wrapper), Float128, (Float128,), x)
@@ -228,8 +220,6 @@ realmin(::Type{Float128}) = ccall(("realmin_q", libquadmath_wrapper), Float128, 
 realmax(::Type{Float128}) = ccall(("realmax_q", libquadmath_wrapper), Float128, (), )
 convert(::Type{Float128}, ::Irrational{:π}) =  ccall(("pi_q", libquadmath_wrapper), Float128, (), )
 convert(::Type{Float128}, ::Irrational{:e}) =  ccall(("e_q", libquadmath_wrapper), Float128, (), )
-
-
 
 # unary functions
 for f in (:acos, :acosh, :asin, :asinh, :atan, :atanh, :cosh, :cos,
@@ -281,8 +271,6 @@ function cis(x::Float128)
     ccall((:ccis_q, libquadmath_wrapper), Complex256, (Float128,), x)
 end
 
-
-
 function string(x::Float128)
     lng = 64 
     buf = Array(UInt8, lng + 1)
@@ -305,5 +293,4 @@ end
 convert(::Type{Float128}, x::BigFloat) =
     ccall((:mpfr_get_float128_xxx, libquadmath_wrapper), Float128, (Ptr{BigFloat},Int32), &x, ROUNDING_MODE[end])
 
-
-end
+end # modeule Quadmath
