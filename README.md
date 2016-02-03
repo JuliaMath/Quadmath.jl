@@ -36,8 +36,9 @@ Then 'Quadmath_examples' will be listed in the JuliaBox home screen. The example
     ``` 
     in C.
     
-    A remedy is to implement a wrapper function for each external function with `__float128` parameters or return values,
-    that you want to call with `ccall`. Such a wrapper takes parameters `x` of type `myfloat128` declared as
+    As a remedy, you can implement a wrapper function for each external function with `__float128` parameters 
+    or return values, that you want to call with `ccall`. Such a wrapper takes parameters `x` of type 
+    `myfloat128` declared as
     ```c
     typedef union
     {
