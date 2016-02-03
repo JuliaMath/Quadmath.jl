@@ -50,7 +50,7 @@ Then 'Quadmath_examples' will be listed in the JuliaBox home screen. The example
       } words64;
     } myfloat128;
     ```
-    and calls the original function with `x.value` as actual parameter for the coorresponding formal parameter of type
+    and calls the original function with `x.value` as actual parameter for the corresponding formal parameter of type
     `__float128`. 
     This is exactly the technique we use in 
     [quadmath_wrapper.c](https://github.com/HaraldHofstaetter/Quadmath.jl/blob/master/deps/src/quadmath_wrapper.c)
