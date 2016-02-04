@@ -1,6 +1,8 @@
 # This file is modelled after https://github.com/JuliaLang/julia/blob/master/base/mpfr.jl
 # which implements the BigFloat type
 
+__precompile__()
+
 module Quadmath
 
 export Float128, Complex256
