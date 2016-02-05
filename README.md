@@ -17,8 +17,7 @@ Then 'Quadmath_examples' will be listed in the JuliaBox home screen. The example
   (the precision of `Float128`).
 
 ##Bugs
-+  `ccall` does not treat parameters and returning values of Julia type `Float128` as C type `__float128` as it would
-    be appropriate. 
++  `ccall` does not treat parameters and returning values of Julia type `Float128` properly as C type `__float128`.
 
     Unfortunately, this is a bug which cannot easily be fixed without modifying the internals of Julia. 
     The [x86-64 Application Binary Interface](http://www.x86-64.org/documentation.html) 
