@@ -1,5 +1,7 @@
 all: shared_lib
 
+CC = gcc
+
 ifeq (exists, $(shell [ -e Make.user ] && echo exists ))
 include Make.user 
 endif
@@ -44,20 +46,18 @@ endif
 
 shared_lib: libquadmath_wrapper.$(SHLIB_EXT)
 
-%.c.o: %.c %.h
-	$(CC) $< -fPIC -c -o $@ $(INC) $(CFLAGS) $(FLAGS)
 
 quadmath_wrapper.o: quadmath_wrapper.c quadmath_wrapper.h
-	gcc  -O3 -g -fPIC -c -o quadmath_wrapper.o quadmath_wrapper.c 
+	$(CC) -O3 -g -fPIC -c -o quadmath_wrapper.o quadmath_wrapper.c 
 
 set_float128.o: set_float128.c quadmath_wrapper.h
-	gcc -O3 -fpic -c -o set_float128.o  \
+	$(CC) -O3 -fpic -c -o set_float128.o  \
             -I$(INC) set_float128.c         
 #            -I$(INCGMP) -I$(INCMPFR) -I$(INCMPARAM) \
 #            set_float128.c         
 
 get_float128.o: get_float128.c quadmath_wrapper.h
-	gcc -O3 -fpic -c -o get_float128.o  \
+	$(CC) -O3 -fpic -c -o get_float128.o  \
             -I$(INC) get_float128.c         
 #            -I$(INCGMP) -I$(INCMPFR) -I$(INCMPARAM) \
 #            get_float128.c         

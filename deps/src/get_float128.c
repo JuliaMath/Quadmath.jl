@@ -113,9 +113,9 @@ mpfr_get_float128 (mpfr_srcptr x, mpfr_rnd_t rnd_mode)
 myfloat128
 mpfr_get_float128_xxx (mpfr_srcptr x, mpfr_rnd_t rnd_mode)
 {
-   myfloat128 res;
-   F(res) = mpfr_get_float128 (x, rnd_mode);
-   return res;
+   __float128 res;
+   res = mpfr_get_float128 (x, rnd_mode);
+   return W(res);
 }   
 
 

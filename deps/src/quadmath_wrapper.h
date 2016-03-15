@@ -1,39 +1,16 @@
 #include <stdint.h>
 #include <quadmath.h> 
 
-#if 1
-typedef union
-{
-    __float128 value;
-
-    struct{
-        uint64_t u0;
-        uint64_t u1;
-    } words64;
-
+typedef struct {
+    uint32_t _d[4];
 } myfloat128;
 
-typedef union
-{
-    __complex128 value;
-
-    struct{
-        uint64_t u0;
-        uint64_t u1;
-        uint64_t u2;
-        uint64_t u3;
-    } words64;
-
+typedef struct {
+    uint32_t _d[8];
 } mycomplex128;
 
+#define F(x) (*((__float128*)&(x)))
+#define W(x) (*((myfloat128*)&(x)))
+#define C(x) (*((__complex128*)&(x)))
+#define Z(x) (*((mycomplex128*)&(x)))
 
-#define F(x) (x.value)
-
-#else
-
-typedef __float128  myfloat128;
-typedef __complex128  mycomplex128;
-
-#define F(x) (x)
-
-#endif
