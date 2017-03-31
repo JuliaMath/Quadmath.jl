@@ -1,12 +1,11 @@
-# This file is modelled after https://github.com/JuliaLang/julia/blob/master/base/mpfr.jl
-# which implements the BigFloat type
-
 __precompile__()
 module Quadmath
 
 export Float128, Complex256
 
-import Base: (*), +, -, /,  <, <=, ==, >, >=, ^, convert, reinterpret,
+import Base: (*), +, -, /,  <, <=, ==, ^, convert,
+          reinterpret, sign_mask, exponent_mask, exponent_one, exponent_half,
+          significand_mask,
           promote_rule, widen,
           string, print, show, showcompact, parse,
           acos, acosh, asin, asinh, atan, atanh, cosh, cos,
@@ -22,6 +21,8 @@ import Base: (*), +, -, /,  <, <=, ==, >, >=, ^, convert, reinterpret,
 
 const libquadmath = "libquadmath.0"
 
+# we use this slightly cumbersome definition to ensure that the value is passed
+# on the xmm registers, matching the x86_64 ABI for __float128.
 typealias Cfloat128 NTuple{2,VecElement{Float64}}
 
 immutable Float128 <: AbstractFloat
@@ -33,8 +34,8 @@ typealias Complex256 Complex{Float128}
 
 Base.cconvert(::Type{Cfloat128}, x::Float128) = x.data
 
-# reinterpret
 
+# reinterpret
 function reinterpret(::Type{UInt128}, x::Float128)
     hi = reinterpret(UInt64, x.data[2].value)
     lo = reinterpret(UInt64, x.data[1].value)
@@ -45,11 +46,21 @@ function reinterpret(::Type{Float128}, x::UInt128)
     flo = reinterpret(Float64, x % UInt64)
     Float128((VecElement(flo), VecElement(fhi)))
 end
+reinterpret(::Type{Unsigned}, x::Float128) = reinterpret(UInt128, x)
+
 reinterpret(::Type{Int128}, x::Float128) =
     reinterpret(Int128, reinterpret(UInt128, x))
 reinterpret(::Type{Float128}, x::Int128) =
     reinterpret(Float128, reinterpret(UInt128, x))
 
+
+sign_mask(::Type{Float128}) =        0x8000_0000_0000_0000_0000_0000_0000_0000
+exponent_mask(::Type{Float128}) =    0x7fff_0000_0000_0000_0000_0000_0000_0000
+exponent_one(::Type{Float128}) =     0x3fff_0000_0000_0000_0000_0000_0000_0000
+exponent_half(::Type{Float128}) =    0x3ffe_0000_0000_0000_0000_0000_0000_0000
+significand_mask(::Type{Float128}) = 0x0000_ffff_ffff_ffff_ffff_ffff_ffff_ffff
+
+fpinttype(::Type{Float128}) = UInt128
 
 # conversion
 
@@ -80,13 +91,13 @@ convert(::Type{Float128}, x::Clong) =
 # comparison
 
 (==)(x::Float128, y::Float128) =
-    0 != ccall((:__eqtf2,libquadmath), Cint, (Cfloat128,Cfloat128), x, y)
+    ccall((:__eqtf2,libquadmath), Cint, (Cfloat128,Cfloat128), x, y) == 0
 
 (<)(x::Float128, y::Float128) =
-    0 != ccall((:__lttf2,libquadmath), Cint, (Cfloat128,Cfloat128), x, y)
+    ccall((:__letf2,libquadmath), Cint, (Cfloat128,Cfloat128), x, y) == -1
 
 (<=)(x::Float128, y::Float128) =
-    0 != ccall((:__letf2,libquadmath), Cint, (Cfloat128,Cfloat128), x, y)
+    ccall((:__letf2,libquadmath), Cint, (Cfloat128,Cfloat128), x, y) <= 0
 
 # arithmetic
 
