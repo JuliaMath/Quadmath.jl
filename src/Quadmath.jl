@@ -18,8 +18,13 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           abs, imag, real, conj, angle, cis,
           eps, realmin, realmax, isinf, isnan, isfinite
 
-
-const libquadmath = "libquadmath.0"
+if is_apple()
+    const libquadmath = "libquadmath.0"
+elseif is_unix()
+    const libquadmath = "libquadmath.so.0"
+elseif is_windows()
+    const libquadmath = "libquadmath-0.dll"
+end
 
 # we use this slightly cumbersome definition to ensure that the value is passed
 # on the xmm registers, matching the x86_64 ABI for __float128.
