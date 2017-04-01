@@ -86,11 +86,12 @@ convert(::Type{Float128}, x::Cuint) =
     Float128(ccall((:__floatunsitf, libquadmath), Cfloat128, (Cuint,), x))
 
 ## Clong (Int64 on unix)
-convert(::Type{Clong}, x::Float128) =
-    ccall((:__fixtfdi, libquadmath), Clong, (Cfloat128,), x)
-convert(::Type{Float128}, x::Clong) =
-    Float128(ccall((:__floatditf, libquadmath), Cfloat128, (Clong,), x))
-
+if !is_windows()
+    convert(::Type{Clong}, x::Float128) =
+        ccall((:__fixtfdi, libquadmath), Clong, (Cfloat128,), x)
+    convert(::Type{Float128}, x::Clong) =
+        Float128(ccall((:__floatditf, libquadmath), Cfloat128, (Clong,), x))
+end
 
 
 # comparison
