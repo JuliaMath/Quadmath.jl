@@ -12,7 +12,7 @@ Quadmath currently works on x86_64 Linux and macOS.
 - It may require a new-ish version of gcc which supports `__float128` type.
 - It has not been tested on 32 bit Linux.
 - I have not had any luck getting it to work on Windows. It's probably something to do with the calling convention: if someone figures it out I would be very grateful.
-- It does not work on ARM due to the lack of libquadmath supportt for that platform.
+- It does not work on ARM due to the lack of libquadmath support for that platform.
 
 ## Installation
 ```julia
