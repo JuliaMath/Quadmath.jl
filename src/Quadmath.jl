@@ -19,10 +19,13 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           eps, realmin, realmax, isinf, isnan, isfinite
 
 if is_apple()
+    const quadoplib = "libquadmath.0"
     const libquadmath = "libquadmath.0"
 elseif is_unix()
+    const quadoplib = "libgcc_s"
     const libquadmath = "libquadmath.so.0"
 elseif is_windows()
+    const quadoplib = "libgcc_s_seh-1.dll"
     const libquadmath = "libquadmath-0.dll"
 end
 
@@ -71,52 +74,52 @@ fpinttype(::Type{Float128}) = UInt128
 
 ## Float64
 convert(::Type{Float128}, x::Float64) =
-    Float128(ccall((:__extenddftf2, libquadmath), Cfloat128, (Cdouble,), x))
+    Float128(ccall((:__extenddftf2, quadoplib), Cfloat128, (Cdouble,), x))
 convert(::Type{Float64}, x::Float128) =
-    ccall((:__trunctfdf2, libquadmath), Cdouble, (Cfloat128,), x)
+    ccall((:__trunctfdf2, quadoplib), Cdouble, (Cfloat128,), x)
 
 ## Cint (Int32)
 convert(::Type{Cint}, x::Float128) =
-    ccall((:__fixtfsi, libquadmath), Cint, (Cfloat128,), x)
+    ccall((:__fixtfsi, quadoplib), Cint, (Cfloat128,), x)
 convert(::Type{Float128}, x::Cint) =
-    Float128(ccall((:__floatsitf, libquadmath), Cfloat128, (Cint,), x))
+    Float128(ccall((:__floatsitf, quadoplib), Cfloat128, (Cint,), x))
 
 ## Cuint (UInt32)
 convert(::Type{Float128}, x::Cuint) =
-    Float128(ccall((:__floatunsitf, libquadmath), Cfloat128, (Cuint,), x))
+    Float128(ccall((:__floatunsitf, quadoplib), Cfloat128, (Cuint,), x))
 
 ## Clong (Int64 on unix)
 if !is_windows()
     convert(::Type{Clong}, x::Float128) =
-        ccall((:__fixtfdi, libquadmath), Clong, (Cfloat128,), x)
+        ccall((:__fixtfdi, quadoplib), Clong, (Cfloat128,), x)
     convert(::Type{Float128}, x::Clong) =
-        Float128(ccall((:__floatditf, libquadmath), Cfloat128, (Clong,), x))
+        Float128(ccall((:__floatditf, quadoplib), Cfloat128, (Clong,), x))
 end
 
 
 # comparison
 
 (==)(x::Float128, y::Float128) =
-    ccall((:__eqtf2,libquadmath), Cint, (Cfloat128,Cfloat128), x, y) == 0
+    ccall((:__eqtf2,quadoplib), Cint, (Cfloat128,Cfloat128), x, y) == 0
 
 (<)(x::Float128, y::Float128) =
-    ccall((:__letf2,libquadmath), Cint, (Cfloat128,Cfloat128), x, y) == -1
+    ccall((:__letf2,quadoplib), Cint, (Cfloat128,Cfloat128), x, y) == -1
 
 (<=)(x::Float128, y::Float128) =
-    ccall((:__letf2,libquadmath), Cint, (Cfloat128,Cfloat128), x, y) <= 0
+    ccall((:__letf2,quadoplib), Cint, (Cfloat128,Cfloat128), x, y) <= 0
 
 # arithmetic
 
 (+)(x::Float128, y::Float128) =
-    Float128(ccall((:__addtf3,libquadmath), Cfloat128, (Cfloat128,Cfloat128), x, y))
+    Float128(ccall((:__addtf3,quadoplib), Cfloat128, (Cfloat128,Cfloat128), x, y))
 (-)(x::Float128, y::Float128) =
-    Float128(ccall((:__subtf3,libquadmath), Cfloat128, (Cfloat128,Cfloat128), x, y))
+    Float128(ccall((:__subtf3,quadoplib), Cfloat128, (Cfloat128,Cfloat128), x, y))
 (*)(x::Float128, y::Float128) =
-    Float128(ccall((:__multf3,libquadmath), Cfloat128, (Cfloat128,Cfloat128), x, y))
+    Float128(ccall((:__multf3,quadoplib), Cfloat128, (Cfloat128,Cfloat128), x, y))
 (/)(x::Float128, y::Float128) =
-    Float128(ccall((:__divtf3,libquadmath), Cfloat128, (Cfloat128,Cfloat128), x, y))
+    Float128(ccall((:__divtf3,quadoplib), Cfloat128, (Cfloat128,Cfloat128), x, y))
 (-)(x::Float128) =
-    Float128(ccall((:__negtf2,libquadmath), Cfloat128, (Cfloat128,), x))
+    Float128(ccall((:__negtf2,quadoplib), Cfloat128, (Cfloat128,), x))
 
 # math
 
