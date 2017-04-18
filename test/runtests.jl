@@ -1,10 +1,12 @@
 using Base.Test
 using Quadmath
 
-@test Float128(1.0) + Float128(2.0) == Float128(3.0)
-@test Float128(1.0) + Float128(2.0) <= Float128(3.0)
-@test Float128(1.0) + Float128(2.0) != Float128(4.0)
-@test Float128(1.0) + Float128(2.0) < Float128(4.0)
-@test Float64(Float128(1.0) + Float128(2.0)) === 3.0
+for T in (Float64, Int32, Int64)
+    @test Float128(T(1)) + Float128(T(2)) == Float128(T(3))
+    @test Float128(T(1)) + Float128(T(2)) <= Float128(T(3))
+    @test Float128(T(1)) + Float128(T(2)) != Float128(T(4))
+    @test Float128(T(1)) + Float128(T(2)) < Float128(T(4))
+    @test T(Float128(T(1)) + Float128(T(2))) === T(3)
+end
 
 @test Base.exponent_one(Float128) == reinterpret(UInt128, Float128(1.0))

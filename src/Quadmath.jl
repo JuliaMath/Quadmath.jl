@@ -29,38 +29,44 @@ elseif is_windows()
     const libquadmath = "libquadmath-0.dll"
 end
 
-# we use this slightly cumbersome definition to ensure that the value is passed
-# on the xmm registers, matching the x86_64 ABI for __float128.
-typealias Cfloat128 NTuple{2,VecElement{Float64}}
 
-immutable Float128 <: AbstractFloat
-    data::Cfloat128
+@static if is_unix()
+    # we use this slightly cumbersome definition to ensure that the value is passed
+    # on the xmm registers, matching the x86_64 ABI for __float128.
+    typealias Cfloat128 NTuple{2,VecElement{Float64}}
+
+    immutable Float128 <: AbstractFloat
+        data::Cfloat128
+    end
+    Float128(x::Number) = convert(Float128, x)
+
+    typealias Complex256 Complex{Float128}
+
+    Base.cconvert(::Type{Cfloat128}, x::Float128) = x.data
+
+
+    # reinterpret
+    function reinterpret(::Type{UInt128}, x::Float128)
+        hi = reinterpret(UInt64, x.data[2].value)
+        lo = reinterpret(UInt64, x.data[1].value)
+        UInt128(hi) << 64 | lo
+    end
+    function reinterpret(::Type{Float128}, x::UInt128)
+        fhi = reinterpret(Float64, (x >> 64) % UInt64)
+        flo = reinterpret(Float64, x % UInt64)
+        Float128((VecElement(flo), VecElement(fhi)))
+    end
+    reinterpret(::Type{Unsigned}, x::Float128) = reinterpret(UInt128, x)
+
+    reinterpret(::Type{Int128}, x::Float128) =
+        reinterpret(Int128, reinterpret(UInt128, x))
+    reinterpret(::Type{Float128}, x::Int128) =
+        reinterpret(Float128, reinterpret(UInt128, x))
+    
+elseif is_windows()
+    bitstype 128 Float128
+    typealias Cfloat128 Float128
 end
-Float128(x::Number) = convert(Float128, x)
-
-typealias Complex256 Complex{Float128}
-
-Base.cconvert(::Type{Cfloat128}, x::Float128) = x.data
-
-
-# reinterpret
-function reinterpret(::Type{UInt128}, x::Float128)
-    hi = reinterpret(UInt64, x.data[2].value)
-    lo = reinterpret(UInt64, x.data[1].value)
-    UInt128(hi) << 64 | lo
-end
-function reinterpret(::Type{Float128}, x::UInt128)
-    fhi = reinterpret(Float64, (x >> 64) % UInt64)
-    flo = reinterpret(Float64, x % UInt64)
-    Float128((VecElement(flo), VecElement(fhi)))
-end
-reinterpret(::Type{Unsigned}, x::Float128) = reinterpret(UInt128, x)
-
-reinterpret(::Type{Int128}, x::Float128) =
-    reinterpret(Int128, reinterpret(UInt128, x))
-reinterpret(::Type{Float128}, x::Int128) =
-    reinterpret(Float128, reinterpret(UInt128, x))
-
 
 sign_mask(::Type{Float128}) =        0x8000_0000_0000_0000_0000_0000_0000_0000
 exponent_mask(::Type{Float128}) =    0x7fff_0000_0000_0000_0000_0000_0000_0000
@@ -78,23 +84,18 @@ convert(::Type{Float128}, x::Float64) =
 convert(::Type{Float64}, x::Float128) =
     ccall((:__trunctfdf2, quadoplib), Cdouble, (Cfloat128,), x)
 
-## Cint (Int32)
-convert(::Type{Cint}, x::Float128) =
-    ccall((:__fixtfsi, quadoplib), Cint, (Cfloat128,), x)
-convert(::Type{Float128}, x::Cint) =
-    Float128(ccall((:__floatsitf, quadoplib), Cfloat128, (Cint,), x))
+convert(::Type{Int32}, x::Float128) =
+    ccall((:__fixtfsi, quadoplib), Int32, (Cfloat128,), x)
+convert(::Type{Float128}, x::Int32) =
+    Float128(ccall((:__floatsitf, quadoplib), Cfloat128, (Int32,), x))
 
-## Cuint (UInt32)
-convert(::Type{Float128}, x::Cuint) =
-    Float128(ccall((:__floatunsitf, quadoplib), Cfloat128, (Cuint,), x))
+convert(::Type{Float128}, x::UInt32) =
+    Float128(ccall((:__floatunsitf, quadoplib), Cfloat128, (UInt32,), x))
 
-## Clong (Int64 on unix)
-if !is_windows()
-    convert(::Type{Clong}, x::Float128) =
-        ccall((:__fixtfdi, quadoplib), Clong, (Cfloat128,), x)
-    convert(::Type{Float128}, x::Clong) =
-        Float128(ccall((:__floatditf, quadoplib), Cfloat128, (Clong,), x))
-end
+convert(::Type{Int64}, x::Float128) =
+    ccall((:__fixtfdi, quadoplib), Int64, (Cfloat128,), x)
+convert(::Type{Float128}, x::Int64) =
+    Float128(ccall((:__floatditf, quadoplib), Cfloat128, (Int64,), x))
 
 
 # comparison
