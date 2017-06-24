@@ -29,44 +29,9 @@ elseif is_windows()
     const libquadmath = "libquadmath-0.dll"
 end
 
-
-@static if is_unix()
-    # we use this slightly cumbersome definition to ensure that the value is passed
-    # on the xmm registers, matching the x86_64 ABI for __float128.
-    typealias Cfloat128 NTuple{2,VecElement{Float64}}
-
-    immutable Float128 <: AbstractFloat
-        data::Cfloat128
-    end
-    Float128(x::Number) = convert(Float128, x)
-
-    typealias Complex256 Complex{Float128}
-
-    Base.cconvert(::Type{Cfloat128}, x::Float128) = x.data
-
-
-    # reinterpret
-    function reinterpret(::Type{UInt128}, x::Float128)
-        hi = reinterpret(UInt64, x.data[2].value)
-        lo = reinterpret(UInt64, x.data[1].value)
-        UInt128(hi) << 64 | lo
-    end
-    function reinterpret(::Type{Float128}, x::UInt128)
-        fhi = reinterpret(Float64, (x >> 64) % UInt64)
-        flo = reinterpret(Float64, x % UInt64)
-        Float128((VecElement(flo), VecElement(fhi)))
-    end
-    reinterpret(::Type{Unsigned}, x::Float128) = reinterpret(UInt128, x)
-
-    reinterpret(::Type{Int128}, x::Float128) =
-        reinterpret(Int128, reinterpret(UInt128, x))
-    reinterpret(::Type{Float128}, x::Int128) =
-        reinterpret(Float128, reinterpret(UInt128, x))
-    
-elseif is_windows()
-    bitstype 128 Float128
-    typealias Cfloat128 Float128
-end
+import Base.Float128
+typealias Cfloat128 Float128
+typealias Complex256 Complex{Float128}
 
 sign_mask(::Type{Float128}) =        0x8000_0000_0000_0000_0000_0000_0000_0000
 exponent_mask(::Type{Float128}) =    0x7fff_0000_0000_0000_0000_0000_0000_0000
