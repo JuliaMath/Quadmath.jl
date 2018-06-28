@@ -12,7 +12,7 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           erf, erfc, exp, expm1, log, log2, log10, log1p, sin, sinh, sqrt,
           tan, tanh,
           besselj, besselj0, besselj1, bessely, bessely0, bessely1,
-          ceil, floor, trunc, round, fma, 
+          ceil, floor, trunc, round, fma,
           atan2, copysign, max, min, hypot,
           gamma, lgamma,
           abs, imag, real, conj, angle, cis,
@@ -33,14 +33,14 @@ end
 @static if is_unix()
     # we use this slightly cumbersome definition to ensure that the value is passed
     # on the xmm registers, matching the x86_64 ABI for __float128.
-    typealias Cfloat128 NTuple{2,VecElement{Float64}}
+    const Cfloat128 = NTuple{2,VecElement{Float64}}
 
-    immutable Float128 <: AbstractFloat
+    struct Float128 <: AbstractFloat
         data::Cfloat128
     end
     Float128(x::Number) = convert(Float128, x)
 
-    typealias Complex256 Complex{Float128}
+    const Complex256 = Complex{Float128}
 
     Base.cconvert(::Type{Cfloat128}, x::Float128) = x.data
 
@@ -62,10 +62,10 @@ end
         reinterpret(Int128, reinterpret(UInt128, x))
     reinterpret(::Type{Float128}, x::Int128) =
         reinterpret(Float128, reinterpret(UInt128, x))
-    
+
 elseif is_windows()
-    bitstype 128 Float128
-    typealias Cfloat128 Float128
+    primitive type Float128 128 end
+    const Cfloat128 = Float128
 end
 
 sign_mask(::Type{Float128}) =        0x8000_0000_0000_0000_0000_0000_0000_0000
@@ -127,15 +127,15 @@ convert(::Type{Float128}, x::Int64) =
 ## one argument
 for f in (:acos, :acosh, :asin, :asinh, :atan, :atanh, :cosh, :cos,
           :erf, :erfc, :exp, :expm1, :log, :log2, :log10, :log1p,
-          :sin, :sinh, :sqrt, :tan, :tanh, 
-          :ceil, :floor, :trunc, :lgamma, ) 
+          :sin, :sinh, :sqrt, :tan, :tanh,
+          :ceil, :floor, :trunc, :lgamma, )
     @eval function $f(x::Float128)
         Float128(ccall(($(string(f,:q)), libquadmath), Cfloat128, (Cfloat128, ), x))
     end
 end
 for (f,fc) in (:abs => :fabs,
                :round => :rint,
-               :gamma => :tgamma,              
+               :gamma => :tgamma,
                :besselj0 => :j0,
                :besselj1 => :j1,
                :bessely0 => :y0,
@@ -169,21 +169,38 @@ bessely(n::Cint, x::Float128) =
        Float128(ccall((:ynq, libquadmath), Cfloat128, (Cint, Cfloat128), n, x))
 
 
+Base.eps(::Type{Float128}) =
+Base.realmin(::Type{Float128}) = reinterpret(Float128, significand_mask(Float128) + one(UInt128))
+Base.realmax(::Type{Float128}) = reinterpret(Float128, exponent_mask(Float128) - one(UInt128))
 
 
-ldexp(x::Float128, n::Cint) =
+Base.ldexp(x::Float128, n::Cint) =
     Float128(ccall((:ldexpq, libquadmath), Cfloat128, (Cfloat128, Cint), x, n))
-ldexp(x::Float128, n::Integer) =
+Base.ldexp(x::Float128, n::Integer) =
     ldexp(x, clamp(n, typemin(Cint), typemax(Cint)) % Cint)
 
-function frexp(x::Float128)
+function Base.frexp(x::Float128)
     r = Ref{Cint}()
     Float128(ccall((:frexpq, libquadmath), Cfloat128, (Cfloat128, Ptr{Cint}), x, r))
     return x, Int(r[])
 end
-    
-    
 
+Base.significand(x::Float128) = frexp(x)[1]*2
+Base.exponent(x::Float128) = isfinite(x) ? frexp(x)[2]-1 : throw(DomainError())
+
+Base.signbit(x::Float128) = (reinterpret(UInt128, x) & sign_mask(Float128)) != 0
+
+# TODO: get Base to compile MPFR with __float128 support and use builtin functions
+function convert(::Type{BigFloat}, x::Float128)
+    if !isfinite(x) || iszero(x)
+        return BigFloat(Float64(x))
+    end
+    y, n = frexp(x)
+    u = reinterpret(UInt128, x)
+    u = (u & significand_mask(Float128)) | (significand_mask(Float128) + one(UInt128))
+    b = copysign(BigInt(u), x)
+    ldexp(BigFloat(b), n - 113)
+end
 
 promote_rule(::Type{Float128}, ::Type{Float32}) = Float128
 promote_rule(::Type{Float128}, ::Type{Float64}) = Float128
@@ -197,10 +214,10 @@ function parse(::Type{Float128}, s::AbstractString)
 end
 
 function string(x::Float128)
-    lng = 64 
-    buf = Array(UInt8, lng + 1)
+    lng = 64
+    buf = Array{UInt8}(lng + 1)
     lng = ccall((:quadmath_snprintf,libquadmath), Cint, (Ptr{UInt8}, Csize_t, Ptr{UInt8}, Cfloat128...), buf, lng + 1, "%.35Qe", x)
-    return unsafe_string(pointer(buf), lng)
+    return String(resize!(buf,lng))
 end
 
 print(io::IO, b::Float128) = print(io, string(b))
