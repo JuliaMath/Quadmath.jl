@@ -22,7 +22,7 @@ if Sys.isapple()
     const quadoplib = "libquadmath.0"
     const libquadmath = "libquadmath.0"
 elseif Sys.isunix()
-    const quadoplib = "libgcc_s"
+    const quadoplib = "libgcc_s.so.1"
     const libquadmath = "libquadmath.so.0"
 elseif Sys.iswindows()
     const quadoplib = "libgcc_s_seh-1.dll"
