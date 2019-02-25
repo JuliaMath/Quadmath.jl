@@ -13,10 +13,10 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           exp, expm1, log, log2, log10, log1p, sin, sinh, sqrt,
           tan, tanh,
           ceil, floor, trunc, round, fma,
-          copysign, max, min, hypot,
-          abs, imag, real, conj, angle, cis,
-          eps, isinf, isnan, isfinite,
-          Int32,Int64,Float64
+          copysign, max, min, hypot, abs,
+          ldexp, frexp,
+          eps, isinf, isnan, isfinite, floatmin, floatmax, precision, signbit,
+          Int32,Int64,Float64,BigFloat
 
 if Sys.isapple()
     const quadoplib = "libquadmath.0"
@@ -185,11 +185,12 @@ isinf(x::Float128) =
 isfinite(x::Float128) =
     0 != ccall((:finiteq,libquadmath), Cint, (Cfloat128, ), x)
 
-eps(::Type{Float128}) = reinterpret(Float128, 0x3f8f0000000000000000000000000000)
-realmin(::Type{Float128}) = reinterpret(Float128, 0x00010000000000000000000000000000)
-realmax(::Type{Float128}) = reinterpret(Float128, 0x7ffeffffffffffffffffffffffffffff)
-Float128(::Irrational{:π}) =  reinterpret(Float128, 0x4000921fb54442d18469898cc51701b8)
-Float128(::Irrational{:e}) =  reinterpret(Float128, 0x40005bf0a8b1457695355fb8ac404e7a)
+signbit(x::Float128) = signbit(reinterpret(Int128, x))
+precision(::Type{Float128}) = 113
+
+eps(::Type{Float128}) = reinterpret(Float128, 0x3f8f_0000_0000_0000_0000_0000_0000_0000)
+floatmin(::Type{Float128}) = reinterpret(Float128, 0x0001_0000_0000_0000_0000_0000_0000_0000)
+floatmax(::Type{Float128}) = reinterpret(Float128, 0x7ffe_ffff_ffff_ffff_ffff_ffff_ffff_ffff)
 
 
 ldexp(x::Float128, n::Cint) =
@@ -199,9 +200,104 @@ ldexp(x::Float128, n::Integer) =
 
 function frexp(x::Float128)
     r = Ref{Cint}()
-    Float128(ccall((:frexpq, libquadmath), Cfloat128, (Cfloat128, Ptr{Cint}), x, r))
-    return x, Int(r[])
+    y = Float128(ccall((:frexpq, libquadmath), Cfloat128, (Cfloat128, Ptr{Cint}), x, r))
+    return y, Int(r[])
 end
+
+Float128(::Irrational{:π}) =  reinterpret(Float128, 0x4000921fb54442d18469898cc51701b8)
+Float128(::Irrational{:e}) =  reinterpret(Float128, 0x40005bf0a8b1457695355fb8ac404e7a)
+
+function BigFloat(x::Float128; precision=precision(BigFloat))
+    if !isfinite(x) || iszero(x)
+        @static if VERSION < v"1.1"
+            return BigFloat(Float64(x), precision)
+        else
+            return BigFloat(Float64(x), precision=precision)
+        end
+    end
+
+    @static if VERSION < v"1.1"
+        b = setprecision(BigFloat, max(precision,113)) do
+            BigFloat()
+        end
+    else
+        b = BigFloat(precision=max(precision,113))
+    end
+
+    y, k = frexp(x)
+    b.exp = Clong(k)
+    b.sign = signbit(x) ? Cint(-1) : Cint(1)
+    u = (reinterpret(UInt128, y) << 15) | 0x8000_0000_0000_0000_0000_0000_0000_0000
+    i = cld(precision, sizeof(Culong)*8)
+    while u != 0
+        w = (u >> (128-sizeof(Culong)*8)) % Culong
+        unsafe_store!(b.d, w, i)
+        i -= 1
+        u <<= sizeof(Culong)*8
+    end
+    # set remaining bits to zero
+    while i > 0
+        unsafe_store!(b.d, zero(Culong), i)
+        i -= 1
+    end
+
+    if precision < 113
+        @static if VERSION < v"1.1"
+            b2 = setprecision(BigFloat, precision) do
+                BigFloat()
+            end
+            ccall((:mpfr_set, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32),
+                  b2, b, Base.MPFR.ROUNDING_MODE[])
+            return b2
+        else
+            return BigFloat(b, precision=precision)
+        end
+    else
+        return b
+    end
+end
+
+function Float128(x::BigFloat)
+    if !isfinite(x) || iszero(x)
+        return Float128(Float64(x))
+    end
+
+    y,k = frexp(x)
+    if k >= -16381
+        prec = 113
+    elseif k >= -16381-112
+        prec = 113 + (k + 16381)
+    elseif k == -16381-113 && abs(y) > 0.5
+        z = reinterepret(Float128, UInt128(1))
+    else
+        z = reinterepret(Float128, UInt128(0))
+    end
+
+    @static if VERSION < v"1.1"
+        y = setprecision(BigFloat, prec) do
+            BigFloat()
+        end
+        ccall((:mpfr_set, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32),
+                  y, x, Base.MPFR.ROUNDING_MODE[])
+    else
+        y = BigFloat(x, precision=prec)
+    end
+
+    u = zero(UInt128)
+    i = cld(prec, sizeof(Culong)*8)
+    j = 113
+    while i > 0
+        j -= sizeof(Culong)*8
+        u |= (unsafe_load(y.d, i) % UInt128) << j
+        i -= 1
+    end
+    u &= significand_mask(Float128)
+    u |= exponent_half(Float128)
+    z = ldexp(reinterpret(Float128, u), y.exp)
+    return copysign(z,x)
+end
+
+
 
 promote_rule(::Type{Float128}, ::Type{Float16}) = Float128
 promote_rule(::Type{Float128}, ::Type{Float32}) = Float128
