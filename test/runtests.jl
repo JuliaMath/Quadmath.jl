@@ -1,4 +1,4 @@
-using Base.Test
+using Test
 using Quadmath
 
 for T in (Float64, Int32, Int64)
