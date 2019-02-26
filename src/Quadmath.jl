@@ -207,7 +207,11 @@ function frexp(x::Float128)
 end
 
 significand(x::Float128) = frexp(x)[1] * 2
-exponent(x::Float128) = frexp(x)[2] - 1
+function exponent(x::Float128)
+     !isfinite(x) && throw(DomainError("Cannot be NaN or Inf."))
+     abs(x) > 0 && return frexp(x)[2] - 1
+     throw(DomainError("Cannot be subnormal converted to 0."))
+end
 
 Float128(::Irrational{:π}) =  reinterpret(Float128, 0x4000921fb54442d18469898cc51701b8)
 Float128(::Irrational{:e}) =  reinterpret(Float128, 0x40005bf0a8b1457695355fb8ac404e7a)
