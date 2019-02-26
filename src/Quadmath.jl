@@ -55,6 +55,7 @@ end
         Float128((VecElement(flo), VecElement(fhi)))
     end
     reinterpret(::Type{Unsigned}, x::Float128) = reinterpret(UInt128, x)
+    reinterpret(::Type{Signed}, x::Float128) = reinterpret(Int128, x)
 
     reinterpret(::Type{Int128}, x::Float128) =
         reinterpret(Int128, reinterpret(UInt128, x))
