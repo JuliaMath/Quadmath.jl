@@ -1,4 +1,3 @@
-__precompile__()
 module Quadmath
 using Requires
 
@@ -6,15 +5,15 @@ export Float128, ComplexF128
 
 import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           reinterpret, sign_mask, exponent_mask, exponent_one, exponent_half,
-          significand_mask,
+          significand_mask, exponent, significand,
           promote_rule, widen,
           string, print, show, parse,
           acos, acosh, asin, asinh, atan, atanh, cosh, cos,
           exp, expm1, log, log2, log10, log1p, sin, sinh, sqrt,
           tan, tanh,
           ceil, floor, trunc, round, fma,
-          copysign, max, min, hypot, abs,
-          ldexp, frexp,
+          copysign, flipsign, max, min, hypot, abs,
+          ldexp, frexp, nextfloat,
           eps, isinf, isnan, isfinite, floatmin, floatmax, precision, signbit,
           Int32,Int64,Float64,BigFloat
 
@@ -56,6 +55,7 @@ end
         Float128((VecElement(flo), VecElement(fhi)))
     end
     reinterpret(::Type{Unsigned}, x::Float128) = reinterpret(UInt128, x)
+    reinterpret(::Type{Signed}, x::Float128) = reinterpret(Int128, x)
 
     reinterpret(::Type{Int128}, x::Float128) =
         reinterpret(Int128, reinterpret(UInt128, x))
@@ -170,6 +170,8 @@ for f in (:copysign, :hypot, )
     end
 end
 
+flipsign(x::Float128, y::Float128) = signbit(y) ? -x : x
+
 function atan(x::Float128, y::Float128)
     Float128(ccall((:atan2q, libquadmath), Cfloat128, (Cfloat128, Cfloat128), x, y))
 end
@@ -177,7 +179,7 @@ end
 ## misc
 fma(x::Float128, y::Float128, z::Float128) =
     Float128(ccall((:fmaq,libquadmath), Cfloat128, (Cfloat128, Cfloat128, Cfloat128), x, y, z))
-
+    
 isnan(x::Float128) =
     0 != ccall((:isnanq,libquadmath), Cint, (Cfloat128, ), x)
 isinf(x::Float128) =
@@ -202,6 +204,51 @@ function frexp(x::Float128)
     r = Ref{Cint}()
     y = Float128(ccall((:frexpq, libquadmath), Cfloat128, (Cfloat128, Ptr{Cint}), x, r))
     return y, Int(r[])
+end
+
+significand(x::Float128) = frexp(x)[1] * 2
+function exponent(x::Float128)
+     !isfinite(x) && throw(DomainError("Cannot be NaN or Inf."))
+     abs(x) > 0 && return frexp(x)[2] - 1
+     throw(DomainError("Cannot be subnormal converted to 0."))
+end
+
+function nextfloat(f::Float128, d::Integer)
+    F = typeof(f)
+    fumax = reinterpret(Unsigned, F(Inf))
+    U = typeof(fumax)
+
+    isnan(f) && return f
+    fi = reinterpret(Signed, f)
+    fneg = fi < 0
+    fu = unsigned(fi & typemax(fi))
+
+    dneg = d < 0
+    da = uabs(d)
+    if da > typemax(U)
+        fneg = dneg
+        fu = fumax
+    else
+        du = da % U
+        if fneg ⊻ dneg
+            if du > fu
+                fu = min(fumax, du - fu)
+                fneg = !fneg
+            else
+                fu = fu - du
+            end
+        else
+            if fumax - fu < du
+                fu = fumax
+            else
+                fu = fu + du
+            end
+        end
+    end
+    if fneg
+        fu |= sign_mask(F)
+    end
+    reinterpret(F, fu)
 end
 
 Float128(::Irrational{:π}) =  reinterpret(Float128, 0x4000921fb54442d18469898cc51701b8)
