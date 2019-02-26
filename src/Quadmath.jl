@@ -13,7 +13,7 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           tan, tanh,
           ceil, floor, trunc, round, fma,
           copysign, flipsign, max, min, hypot, abs,
-          ldexp, frexp,
+          ldexp, frexp, nextfloat,
           eps, isinf, isnan, isfinite, floatmin, floatmax, precision, signbit,
           Int32,Int64,Float64,BigFloat
 
@@ -211,6 +211,44 @@ function exponent(x::Float128)
      !isfinite(x) && throw(DomainError("Cannot be NaN or Inf."))
      abs(x) > 0 && return frexp(x)[2] - 1
      throw(DomainError("Cannot be subnormal converted to 0."))
+end
+
+function nextfloat(f::Float128, d::Integer)
+    F = typeof(f)
+    fumax = reinterpret(Unsigned, F(Inf))
+    U = typeof(fumax)
+
+    isnan(f) && return f
+    fi = reinterpret(Signed, f)
+    fneg = fi < 0
+    fu = unsigned(fi & typemax(fi))
+
+    dneg = d < 0
+    da = uabs(d)
+    if da > typemax(U)
+        fneg = dneg
+        fu = fumax
+    else
+        du = da % U
+        if fneg ⊻ dneg
+            if du > fu
+                fu = min(fumax, du - fu)
+                fneg = !fneg
+            else
+                fu = fu - du
+            end
+        else
+            if fumax - fu < du
+                fu = fumax
+            else
+                fu = fu + du
+            end
+        end
+    end
+    if fneg
+        fu |= sign_mask(F)
+    end
+    reinterpret(F, fu)
 end
 
 Float128(::Irrational{:π}) =  reinterpret(Float128, 0x4000921fb54442d18469898cc51701b8)
