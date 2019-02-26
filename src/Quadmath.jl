@@ -5,14 +5,14 @@ export Float128, ComplexF128
 
 import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           reinterpret, sign_mask, exponent_mask, exponent_one, exponent_half,
-          significand_mask,
+          significand_mask, exponent, significand,
           promote_rule, widen,
           string, print, show, parse,
           acos, acosh, asin, asinh, atan, atanh, cosh, cos,
           exp, expm1, log, log2, log10, log1p, sin, sinh, sqrt,
           tan, tanh,
           ceil, floor, trunc, round, fma,
-          copysign, max, min, hypot, abs,
+          copysign, flipsign, max, min, hypot, abs,
           ldexp, frexp,
           eps, isinf, isnan, isfinite, floatmin, floatmax, precision, signbit,
           Int32,Int64,Float64,BigFloat
@@ -169,6 +169,8 @@ for f in (:copysign, :hypot, )
     end
 end
 
+flipsign(x::Float128, y::Float128) = signbit(y) ? -x : x
+
 function atan(x::Float128, y::Float128)
     Float128(ccall((:atan2q, libquadmath), Cfloat128, (Cfloat128, Cfloat128), x, y))
 end
@@ -176,7 +178,7 @@ end
 ## misc
 fma(x::Float128, y::Float128, z::Float128) =
     Float128(ccall((:fmaq,libquadmath), Cfloat128, (Cfloat128, Cfloat128, Cfloat128), x, y, z))
-
+    
 isnan(x::Float128) =
     0 != ccall((:isnanq,libquadmath), Cint, (Cfloat128, ), x)
 isinf(x::Float128) =
@@ -202,6 +204,9 @@ function frexp(x::Float128)
     y = Float128(ccall((:frexpq, libquadmath), Cfloat128, (Cfloat128, Ptr{Cint}), x, r))
     return y, Int(r[])
 end
+
+significand(x::Float128) = frexp(x)[1] * 2
+exponent(x::Float128) = frexp(x)[2] - 1
 
 Float128(::Irrational{:π}) =  reinterpret(Float128, 0x4000921fb54442d18469898cc51701b8)
 Float128(::Irrational{:e}) =  reinterpret(Float128, 0x40005bf0a8b1457695355fb8ac404e7a)
