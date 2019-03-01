@@ -13,9 +13,10 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           tan, tanh,
           ceil, floor, trunc, round, fma,
           copysign, flipsign, max, min, hypot, abs,
-          ldexp, frexp, nextfloat,
-          eps, isinf, isnan, isfinite, floatmin, floatmax, precision, signbit,
-          Int32,Int64,Float64,BigFloat
+          ldexp, frexp, modf, nextfloat, eps,
+          isinf, isnan, isfinite, isinteger,
+          floatmin, floatmax, precision, signbit,
+          Int32, Int64, Float64, BigFloat, BigInt
 
 if Sys.isapple()
     const quadoplib = "libquadmath.0"
@@ -186,6 +187,7 @@ isinf(x::Float128) =
     0 != ccall((:isinfq,libquadmath), Cint, (Cfloat128, ), x)
 isfinite(x::Float128) =
     0 != ccall((:finiteq,libquadmath), Cint, (Cfloat128, ), x)
+isinteger(x::Float128) = isfinite(x) && x === trunc(x)
 
 signbit(x::Float128) = signbit(reinterpret(Int128, x))
 precision(::Type{Float128}) = 113
@@ -193,7 +195,6 @@ precision(::Type{Float128}) = 113
 eps(::Type{Float128}) = reinterpret(Float128, 0x3f8f_0000_0000_0000_0000_0000_0000_0000)
 floatmin(::Type{Float128}) = reinterpret(Float128, 0x0001_0000_0000_0000_0000_0000_0000_0000)
 floatmax(::Type{Float128}) = reinterpret(Float128, 0x7ffe_ffff_ffff_ffff_ffff_ffff_ffff_ffff)
-
 
 ldexp(x::Float128, n::Cint) =
     Float128(ccall((:ldexpq, libquadmath), Cfloat128, (Cfloat128, Cint), x, n))
@@ -204,6 +205,13 @@ function frexp(x::Float128)
     r = Ref{Cint}()
     y = Float128(ccall((:frexpq, libquadmath), Cfloat128, (Cfloat128, Ptr{Cint}), x, r))
     return y, Int(r[])
+end
+
+function modf(x::Float128)
+    isinf(x) && return (zero(Float128), x)
+    ipart = trunc(x)
+    fpart = x - ipart
+    return fpart, ipart
 end
 
 significand(x::Float128) = frexp(x)[1] * 2
@@ -224,7 +232,7 @@ function nextfloat(f::Float128, d::Integer)
     fu = unsigned(fi & typemax(fi))
 
     dneg = d < 0
-    da = uabs(d)
+    da = Base.uabs(d)
     if da > typemax(U)
         fneg = dneg
         fu = fumax
@@ -344,7 +352,11 @@ function Float128(x::BigFloat)
     return copysign(z,x)
 end
 
-
+function BigInt(x::Float128)
+    !isinteger(x) && throw(InexactError(:BigInt, x))
+    BigInt(BigFloat(x, precision=precision(Float128)))
+end
+Float128(x::BigInt) = Float128(BigFloat(x, precision=precision(Float128)))
 
 promote_rule(::Type{Float128}, ::Type{Float16}) = Float128
 promote_rule(::Type{Float128}, ::Type{Float32}) = Float128
