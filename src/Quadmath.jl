@@ -354,7 +354,18 @@ end
 
 function BigInt(x::Float128)
     !isinteger(x) && throw(InexactError(:BigInt, x))
-    BigInt(BigFloat(x, precision=precision(Float128)))
+
+    @static if VERSION < v"1.1"
+        y = setprecision(BigFloat, max(precision, precision(Float128))) do
+            BigFloat()
+        end
+        ccall((:mpfr_set, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32),
+               y, x, Base.MPFR.ROUNDING_MODE[])
+    else
+        y = BigFloat(x, precision=precision(Float128))
+    end
+
+    return BigInt(y)
 end
 Float128(x::BigInt) = Float128(BigFloat(x, precision=precision(Float128)))
 
