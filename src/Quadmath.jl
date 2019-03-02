@@ -1,7 +1,7 @@
 module Quadmath
 using Requires
 
-export Float128, ComplexF128
+export Float128, ComplexF128, Inf128
 
 import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           reinterpret, sign_mask, exponent_mask, exponent_one, exponent_half,
@@ -13,7 +13,7 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           tan, tanh,
           ceil, floor, trunc, round, fma,
           copysign, flipsign, max, min, hypot, abs,
-          ldexp, frexp, modf, nextfloat, eps,
+          ldexp, frexp, modf, nextfloat, typemax, typemin, eps,
           isinf, isnan, isfinite, isinteger,
           floatmin, floatmax, precision, signbit, maxintfloat,
           Int32, Int64, Float64, BigFloat, BigInt
@@ -368,6 +368,14 @@ floatmin(::Type{Float128}) = reinterpret(Float128, 0x0001_0000_0000_0000_0000_00
 floatmax(::Type{Float128}) = reinterpret(Float128, 0x7ffe_ffff_ffff_ffff_ffff_ffff_ffff_ffff)
 
 maxintfloat(::Type{Float128}) = Float128(0x0002_0000_0000_0000_0000_0000_0000_0000)
+"""
+    Inf128
+
+Positive infinity of type [`Float128`](@ref).
+"""
+const Inf128 = reinterpret(Float128, 0x7fff_0000_0000_0000_0000_0000_0000_0000)
+typemax(::Type{Float128}) = Inf128
+typemin(::Type{Float128}) = -Inf128
 
 ldexp(x::Float128, n::Cint) =
     Float128(@ccall(libquadmath.ldexpq(x::Cfloat128, n::Cint)::Cfloat128))

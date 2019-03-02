@@ -139,6 +139,25 @@ end
     @test parse(Float128,"3.0") == Float128(3.0)
 end
 
+isnan128(x) = isa(x, Float128) && isnan(x)
+isinf128(x) = isa(x, Float128) && isinf(x)
+
+@testset "nonfinite" begin
+    Zero = Float128(0)
+    One = Float128(1)
+    huge = floatmax(Float128)
+    myinf = huge + huge
+    myminf = -myinf
+    @test isinf128(myinf)
+    @test isnan128(Zero / Zero)
+    @test isinf128(One / Zero)
+    @test isnan128(myinf - myinf)
+    @test isnan128(myinf + myminf)
+    @test Inf128 === myinf
+    @test typemax(Float128) === myinf
+    @test typemin(Float128) === myminf
+end
+
 include("specfun.jl")
 
 include("printf.jl")
