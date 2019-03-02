@@ -353,7 +353,7 @@ function Float128(x::BigFloat)
 end
 
 function BigInt(x::Float128)
-    !isinteger(x) && throw(InexactError(:BigInt, x))
+    !isinteger(x) && throw(InexactError(BigInt, x))
 
     @static if VERSION < v"1.1"
         y = setprecision(BigFloat, max(precision, precision(Float128))) do
