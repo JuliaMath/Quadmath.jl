@@ -69,6 +69,10 @@ elseif Sys.iswindows()
     const Cfloat128 = Float128
 end
 
+macro _symsym(x)
+    return Expr(:quote, x)
+end
+
 function __init__()
     @require SpecialFunctions="276daf66-3868-5448-9aa4-cd146d93841b" begin
         import .SpecialFunctions
@@ -101,49 +105,119 @@ fpinttype(::Type{Float128}) = UInt128
 Float128(x::Float128) = x
 
 ## Float64
-Float128(x::Float64) =
-    Float128(ccall((:__extenddftf2, quadoplib), Cfloat128, (Cdouble,), x))
-Float64(x::Float128) =
-    ccall((:__trunctfdf2, quadoplib), Cdouble, (Cfloat128,), x)
+if Sys.iswindows()
+    function Float128(x::Float64)
+        r = Ref{Cfloat128}()
+        ccall((:__extenddftf2,quadoplib),
+                       Cvoid, (Ptr{Cfloat128}, Cdouble), r, x)
+        Float128(r[])
+    end
+    function Float64(x::Float128)
+        ccall((:__trunctfdf2,quadoplib), Cdouble, (Ref{Cfloat128},), x)
+    end
+else
+    Float128(x::Float64) =
+        Float128(ccall((:__extenddftf2, quadoplib), Cfloat128, (Cdouble,), x))
+    Float64(x::Float128) =
+        ccall((:__trunctfdf2, quadoplib), Cdouble, (Cfloat128,), x)
+end
 
-Int32(x::Float128) =
-    ccall((:__fixtfsi, quadoplib), Int32, (Cfloat128,), x)
-Float128(x::Int32) =
-    Float128(ccall((:__floatsitf, quadoplib), Cfloat128, (Int32,), x))
+if Sys.iswindows()
+    Int32(x::Float128) =
+        ccall((:__fixtfsi, quadoplib), Int32, (Ref{Cfloat128},), x)
+    function Float128(x::Int32)
+        r = Ref{Cfloat128}()
+        ccall((:__floatsitf, quadoplib), Cvoid, (Ptr{Cfloat128}, Int32,), r, x)
+        Float128(r[])
+    end
 
-Float128(x::UInt32) =
-    Float128(ccall((:__floatunsitf, quadoplib), Cfloat128, (UInt32,), x))
+    function Float128(x::UInt32)
+        r = Ref{Cfloat128}()
+        ccall((:__floatunsitf, quadoplib), Cvoid, (Ptr{Cfloat128}, UInt32,), r, x)
+        Float128(r[])
+    end
 
-Int64(x::Float128) =
-    ccall((:__fixtfdi, quadoplib), Int64, (Cfloat128,), x)
-Float128(x::Int64) =
-    Float128(ccall((:__floatditf, quadoplib), Cfloat128, (Int64,), x))
+    Int64(x::Float128) =
+        ccall((:__fixtfdi, quadoplib), Int64, (Ref{Cfloat128},), x)
+    function Float128(x::Int64)
+        r = Ref{Cfloat128}()
+        ccall((:__floatditf, quadoplib), Cvoid, (Ptr{Cfloat128}, Int64,), r, x)
+        Float128(r[])
+    end
+else
+    Int32(x::Float128) =
+        ccall((:__fixtfsi, quadoplib), Int32, (Cfloat128,), x)
+    Float128(x::Int32) =
+        Float128(ccall((:__floatsitf, quadoplib), Cfloat128, (Int32,), x))
+
+    Float128(x::UInt32) =
+        Float128(ccall((:__floatunsitf, quadoplib), Cfloat128, (UInt32,), x))
+
+    Int64(x::Float128) =
+        ccall((:__fixtfdi, quadoplib), Int64, (Cfloat128,), x)
+    Float128(x::Int64) =
+        Float128(ccall((:__floatditf, quadoplib), Cfloat128, (Int64,), x))
+end
 
 Float128(x::Rational{T}) where T = Float128(numerator(x))/Float128(denominator(x))
 
 # comparison
 
-(==)(x::Float128, y::Float128) =
-    ccall((:__eqtf2,quadoplib), Cint, (Cfloat128,Cfloat128), x, y) == 0
+if Sys.iswindows()
+    (==)(x::Float128, y::Float128) =
+        ccall((:__eqtf2,quadoplib),
+              Cint, (Ref{Cfloat128},Ref{Cfloat128}), x, y) == 0
+    (<)(x::Float128, y::Float128) =
+        ccall((:__letf2,quadoplib),
+              Cint, (Ref{Cfloat128},Ref{Cfloat128}), x, y) == -1
+    (<=)(x::Float128, y::Float128) =
+        ccall((:__letf2,quadoplib),
+              Cint, (Ref{Cfloat128},Ref{Cfloat128}), x, y) <= 0
+else
+    (==)(x::Float128, y::Float128) =
+        ccall((:__eqtf2,quadoplib), Cint, (Cfloat128,Cfloat128), x, y) == 0
 
-(<)(x::Float128, y::Float128) =
-    ccall((:__letf2,quadoplib), Cint, (Cfloat128,Cfloat128), x, y) == -1
+    (<)(x::Float128, y::Float128) =
+        ccall((:__letf2,quadoplib), Cint, (Cfloat128,Cfloat128), x, y) == -1
 
-(<=)(x::Float128, y::Float128) =
-    ccall((:__letf2,quadoplib), Cint, (Cfloat128,Cfloat128), x, y) <= 0
+    (<=)(x::Float128, y::Float128) =
+        ccall((:__letf2,quadoplib), Cint, (Cfloat128,Cfloat128), x, y) <= 0
+end
 
 # arithmetic
 
-(+)(x::Float128, y::Float128) =
-    Float128(ccall((:__addtf3,quadoplib), Cfloat128, (Cfloat128,Cfloat128), x, y))
-(-)(x::Float128, y::Float128) =
-    Float128(ccall((:__subtf3,quadoplib), Cfloat128, (Cfloat128,Cfloat128), x, y))
-(*)(x::Float128, y::Float128) =
-    Float128(ccall((:__multf3,quadoplib), Cfloat128, (Cfloat128,Cfloat128), x, y))
-(/)(x::Float128, y::Float128) =
-    Float128(ccall((:__divtf3,quadoplib), Cfloat128, (Cfloat128,Cfloat128), x, y))
-(-)(x::Float128) =
-    Float128(ccall((:__negtf2,quadoplib), Cfloat128, (Cfloat128,), x))
+for (op, func) in ((:+, :__addtf3), (:-, :__subtf3), (:*, :__multf3), (:/, :__divtf3))
+    if Sys.iswindows()
+        @eval begin
+            function ($op)(x::Float128, y::Float128)
+                r = Ref{Cfloat128}()
+                ccall((@_symsym($func),quadoplib),
+                      Cvoid, (Ptr{Cfloat128},Ref{Cfloat128},Ref{Cfloat128}),
+                      r, x, y)
+                Float128(r[])
+            end
+        end
+    else
+        @eval begin
+            function ($op)(x::Float128, y::Float128)
+                Float128(ccall((@_symsym($func),quadoplib),
+                               Cfloat128, (Cfloat128,Cfloat128), x, y))
+            end
+        end
+    end
+end
+if Sys.iswindows()
+    function (-)(x::Float128)
+        r = Ref{Cfloat128}()
+        ccall((:__negtf2,quadoplib), Cvoid, (Ptr{Cfloat128}, Cfloat128,),
+              r, x)
+        Float128(r[])
+    end
+else
+    (-)(x::Float128) =
+        Float128(ccall((:__negtf2,quadoplib), Cfloat128, (Cfloat128,), x))
+end
+
 (^)(x::Float128, y::Float128) =
     Float128(ccall((:powq, libquadmath), Cfloat128, (Cfloat128,Cfloat128), x, y))
 # math
