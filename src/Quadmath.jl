@@ -254,7 +254,7 @@ end
 ## misc
 fma(x::Float128, y::Float128, z::Float128) =
     Float128(ccall((:fmaq,libquadmath), Cfloat128, (Cfloat128, Cfloat128, Cfloat128), x, y, z))
-    
+
 isnan(x::Float128) =
     0 != ccall((:isnanq,libquadmath), Cint, (Cfloat128, ), x)
 isinf(x::Float128) =
@@ -270,15 +270,37 @@ eps(::Type{Float128}) = reinterpret(Float128, 0x3f8f_0000_0000_0000_0000_0000_00
 floatmin(::Type{Float128}) = reinterpret(Float128, 0x0001_0000_0000_0000_0000_0000_0000_0000)
 floatmax(::Type{Float128}) = reinterpret(Float128, 0x7ffe_ffff_ffff_ffff_ffff_ffff_ffff_ffff)
 
-ldexp(x::Float128, n::Cint) =
-    Float128(ccall((:ldexpq, libquadmath), Cfloat128, (Cfloat128, Cint), x, n))
+if Sys.iswindows()
+    function ldexp(x::Float128, n::Cint)
+        r = Ref{Cfloat128}()
+        ccall((:ldexpq, libquadmath),
+              Cvoid, (Ptr{Cfloat128}, Cfloat128, Cint), r, x, n)
+        Float128(r[])
+    end
+else
+    ldexp(x::Float128, n::Cint) =
+        Float128(ccall((:ldexpq, libquadmath), Cfloat128, (Cfloat128, Cint),
+                       x, n))
+end
+
 ldexp(x::Float128, n::Integer) =
     ldexp(x, clamp(n, typemin(Cint), typemax(Cint)) % Cint)
 
-function frexp(x::Float128)
-    r = Ref{Cint}()
-    y = Float128(ccall((:frexpq, libquadmath), Cfloat128, (Cfloat128, Ptr{Cint}), x, r))
-    return y, Int(r[])
+if Sys.iswindows()
+    function frexp(x::Float128)
+        r = Ref{Cfloat128}()
+        ri = Ref{Cint}()
+        ccall((:frexpq, libquadmath),
+              Cvoid, (Ptr{Cfloat128}, Cfloat128, Ptr{Cint}), r, x, ri)
+        return Float128(r[]), Int(ri[])
+    end
+else
+        function frexp(x::Float128)
+            r = Ref{Cint}()
+            y = Float128(ccall((:frexpq, libquadmath),
+                               Cfloat128, (Cfloat128, Ptr{Cint}), x, r))
+            return y, Int(r[])
+        end
 end
 
 function modf(x::Float128)
@@ -450,15 +472,40 @@ promote_rule(::Type{Float128}, ::Type{<:Integer}) = Float128
 widen(::Type{Float128}) = BigFloat
 
 # TODO: need to do this better
-function parse(::Type{Float128}, s::AbstractString)
-    Float128(ccall((:strtoflt128, libquadmath), Cfloat128, (Cstring, Ptr{Ptr{Cchar}}), s, C_NULL))
+
+if Sys.iswindows()
+    function parse(::Type{Float128}, s::AbstractString)
+        r = Ref{Cfloat128}()
+        ccall((:strtoflt128, libquadmath),
+              Cvoid, (Ptr{Cfloat128}, Cstring, Ptr{Ptr{Cchar}}),
+              r, s, C_NULL)
+        Float128(r[])
+    end
+else
+    function parse(::Type{Float128}, s::AbstractString)
+        Float128(ccall((:strtoflt128, libquadmath),
+                       Cfloat128, (Cstring, Ptr{Ptr{Cchar}}), s, C_NULL))
+    end
 end
 
-function string(x::Float128)
-    lng = 64
-    buf = Array{UInt8}(undef, lng + 1)
-    lng = ccall((:quadmath_snprintf,libquadmath), Cint, (Ptr{UInt8}, Csize_t, Ptr{UInt8}, Cfloat128...), buf, lng + 1, "%.35Qe", x)
-    return String(resize!(buf, lng))
+if Sys.iswindows()
+    function string(x::Float128)
+        lng = 64
+        buf = Array{UInt8}(undef, lng + 1)
+        lng = ccall((:quadmath_snprintf,libquadmath),
+                    Cint, (Ptr{UInt8}, Csize_t, Ptr{UInt8}, Ref{Cfloat128}...),
+                    buf, lng + 1, "%.35Qe", x)
+        return String(resize!(buf, lng))
+    end
+else
+    function string(x::Float128)
+        lng = 64
+        buf = Array{UInt8}(undef, lng + 1)
+        lng = ccall((:quadmath_snprintf,libquadmath),
+                    Cint, (Ptr{UInt8}, Csize_t, Ptr{UInt8}, Cfloat128...),
+                    buf, lng + 1, "%.35Qe", x)
+        return String(resize!(buf, lng))
+    end
 end
 
 print(io::IO, b::Float128) = print(io, string(b))
