@@ -218,8 +218,19 @@ else
         Float128(ccall((:__negtf2,quadoplib), Cfloat128, (Cfloat128,), x))
 end
 
-(^)(x::Float128, y::Float128) =
-    Float128(ccall((:powq, libquadmath), Cfloat128, (Cfloat128,Cfloat128), x, y))
+if Sys.iswindows()
+    function (^)(x::Float128, y::Float128)
+        r = Ref{Cfloat128}()
+        ccall((:powq, libquadmath), Cvoid,
+              (Ptr{Cfloat128},Cfloat128,Cfloat128), r, x, y)
+        Float128(r[])
+    end
+else
+    (^)(x::Float128, y::Float128) =
+        Float128(ccall((:powq, libquadmath), Cfloat128,
+                       (Cfloat128,Cfloat128), x, y))
+end
+
 # math
 
 ## one argument
@@ -227,14 +238,34 @@ for f in (:acos, :acosh, :asin, :asinh, :atan, :atanh, :cosh, :cos,
           :erf, :erfc, :exp, :expm1, :log, :log2, :log10, :log1p,
           :sin, :sinh, :sqrt, :tan, :tanh,
           :ceil, :floor, :trunc, )
-    @eval function $f(x::Float128)
-        Float128(ccall(($(string(f,:q)), libquadmath), Cfloat128, (Cfloat128, ), x))
+    if Sys.iswindows()
+        @eval function $f(x::Float128)
+            r = Ref{Cfloat128}()
+            ccall(($(string(f,:q)), libquadmath),
+                  Cvoid, (Ptr{Cfloat128}, Cfloat128, ), r, x)
+            Float128(r[])
+        end
+    else
+        @eval function $f(x::Float128)
+            Float128(ccall(($(string(f,:q)), libquadmath),
+                           Cfloat128, (Cfloat128, ), x))
+        end
     end
 end
 for (f,fc) in (:abs => :fabs,
                :round => :rint,)
-    @eval function $f(x::Float128)
-        Float128(ccall(($(string(fc,:q)), libquadmath), Cfloat128, (Cfloat128, ), x))
+    if Sys.iswindows()
+        @eval function $f(x::Float128)
+            r = Ref{Cfloat128}()
+            ccall(($(string(fc,:q)), libquadmath),
+                           Cvoid, (Ptr{Cfloat128}, Cfloat128, ), r, x)
+            Float128(r[])
+        end
+    else
+        @eval function $f(x::Float128)
+            Float128(ccall(($(string(fc,:q)), libquadmath),
+                           Cfloat128, (Cfloat128, ), x))
+        end
     end
 end
 

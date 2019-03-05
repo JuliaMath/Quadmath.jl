@@ -1,6 +1,15 @@
 using Test
 using Quadmath
 
+@testset "fp decomp" begin
+    y = Float128(2.0)
+    x,n = frexp(y)
+    @test x == Float128(0.5)
+    @test n == 2
+    z = ldexp(Float128(0.5), 2)
+    @test z == y
+end
+
 @testset "conversion $T" for T in (Float64, Int32, Int64, BigFloat, BigInt)
     @test Float128(T(1)) + Float128(T(2)) == Float128(T(3))
     @test Float128(T(1)) + Float128(T(2)) <= Float128(T(3))
