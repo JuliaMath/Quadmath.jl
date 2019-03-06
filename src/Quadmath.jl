@@ -389,6 +389,8 @@ end
 Float128(::Irrational{:π}) =  reinterpret(Float128, 0x4000921fb54442d18469898cc51701b8)
 Float128(::Irrational{:e}) =  reinterpret(Float128, 0x40005bf0a8b1457695355fb8ac404e7a)
 
+import Base.MPFR
+
 function BigFloat(x::Float128; precision=precision(BigFloat))
     if !isfinite(x) || iszero(x)
         @static if VERSION < v"1.1"
@@ -410,16 +412,16 @@ function BigFloat(x::Float128; precision=precision(BigFloat))
     b.exp = Clong(k)
     b.sign = signbit(x) ? Cint(-1) : Cint(1)
     u = (reinterpret(UInt128, y) << 15) | 0x8000_0000_0000_0000_0000_0000_0000_0000
-    i = cld(precision, sizeof(Culong)*8)
+    i = cld(precision, sizeof(MPFR.Limb)*8)
     while u != 0
-        w = (u >> (128-sizeof(Culong)*8)) % Culong
+        w = (u >> (128-sizeof(MPFR.Limb)*8)) % MPFR.Limb
         unsafe_store!(b.d, w, i)
         i -= 1
-        u <<= sizeof(Culong)*8
+        u <<= sizeof(MPFR.Limb)*8
     end
     # set remaining bits to zero
     while i > 0
-        unsafe_store!(b.d, zero(Culong), i)
+        unsafe_store!(b.d, zero(MPFR.Limb), i)
         i -= 1
     end
 
@@ -429,7 +431,7 @@ function BigFloat(x::Float128; precision=precision(BigFloat))
                 BigFloat()
             end
             ccall((:mpfr_set, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32),
-                  b2, b, Base.MPFR.ROUNDING_MODE[])
+                  b2, b, MPFR.ROUNDING_MODE[])
             return b2
         else
             return BigFloat(b, precision=precision)
@@ -460,16 +462,16 @@ function Float128(x::BigFloat)
             BigFloat()
         end
         ccall((:mpfr_set, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32),
-                  y, x, Base.MPFR.ROUNDING_MODE[])
+                  y, x, MPFR.ROUNDING_MODE[])
     else
         y = BigFloat(x, precision=prec)
     end
 
     u = zero(UInt128)
-    i = cld(prec, sizeof(Culong)*8)
+    i = cld(prec, sizeof(MPFR.Limb)*8)
     j = 113
     while i > 0
-        j -= sizeof(Culong)*8
+        j -= sizeof(MPFR.Limb)*8
         u |= (unsafe_load(y.d, i) % UInt128) << j
         i -= 1
     end
