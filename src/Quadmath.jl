@@ -25,7 +25,11 @@ elseif Sys.isunix()
     const quadoplib = "libgcc_s.so.1"
     const libquadmath = "libquadmath.so.0"
 elseif Sys.iswindows()
-    const quadoplib = "libgcc_s_seh-1.dll"
+    if sizeof(Ptr{Cvoid}) == 8
+        const quadoplib = "libgcc_s_seh-1.dll"
+    else
+        const quadoplib = "libgcc_s_sjlj-1.dll"
+    end
     const libquadmath = "libquadmath-0.dll"
 end
 
@@ -75,8 +79,71 @@ end
 
 function __init__()
     @require SpecialFunctions="276daf66-3868-5448-9aa4-cd146d93841b" begin
-        import .SpecialFunctions
+      import .SpecialFunctions
 
+      if Sys.iswindows()
+          function SpecialFunctions.erf(x::Float128)
+              r = Ref{Float128}()
+              ccall((:erfq, libquadmath),
+                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+              Float128(r[])
+          end
+          function SpecialFunctions.erfc(x::Float128)
+              r = Ref{Float128}()
+              ccall((:erfcq, libquadmath),
+                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+              Float128(r[])
+          end
+          function SpecialFunctions.besselj0(x::Float128)
+              r = Ref{Float128}()
+              ccall((:j0q, libquadmath),
+                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+              Float128(r[])
+          end
+          function SpecialFunctions.besselj1(x::Float128)
+              r = Ref{Float128}()
+              ccall((:j1q, libquadmath),
+                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+              Float128(r[])
+          end
+          function SpecialFunctions.bessely0(x::Float128)
+              r = Ref{Float128}()
+              ccall((:y0q, libquadmath),
+                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+              Float128(r[])
+          end
+          function SpecialFunctions.bessely1(x::Float128)
+              r = Ref{Float128}()
+              ccall((:y1q, libquadmath),
+                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+              Float128(r[])
+          end
+          function SpecialFunctions.besselj(n::Cint, x::Float128)
+              r = Ref{Float128}()
+              ccall((:jnq, libquadmath),
+                    Cvoid, (Ptr{Cfloat128},Cint, Cfloat128), r, n, x)
+              Float128(r[])
+          end
+          function SpecialFunctions.bessely(n::Cint, x::Float128)
+              r = Ref{Float128}()
+              ccall((:ynq, libquadmath),
+                    Cvoid, (Ptr{Cfloat128},Cint, Cfloat128), r, n, x)
+              Float128(r[])
+          end
+          function SpecialFunctions.gamma(x::Float128)
+              r = Ref{Float128}()
+              ccall((:tgammaq, libquadmath),
+                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+              Float128(r[])
+          end
+          function SpecialFunctions.lgamma(x::Float128)
+              r = Ref{Float128}()
+              ccall((:lgammaq, libquadmath),
+                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+              Float128(r[])
+          end
+
+      else
         SpecialFunctions.erf(x::Float128) = Float128(ccall((:erfq, libquadmath), Cfloat128, (Cfloat128, ), x))
         SpecialFunctions.erfc(x::Float128) = Float128(ccall((:erfcq, libquadmath), Cfloat128, (Cfloat128, ), x))
 
@@ -89,6 +156,7 @@ function __init__()
 
         SpecialFunctions.gamma(x::Float128) = Float128(ccall((:tgammaq, libquadmath), Cfloat128, (Cfloat128, ), x))
         SpecialFunctions.lgamma(x::Float128) = Float128(ccall((:lgammaq, libquadmath), Cfloat128, (Cfloat128, ), x))
+      end
     end
 end
 
