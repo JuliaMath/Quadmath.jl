@@ -25,7 +25,7 @@ elseif Sys.isunix()
     const quadoplib = "libgcc_s.so.1"
     const libquadmath = "libquadmath.so.0"
 elseif Sys.iswindows()
-    if sizeof(Ptr{Cvoid}) == 8
+    if Sys.WORD_SIZE == 8
         const quadoplib = "libgcc_s_seh-1.dll"
     else
         const quadoplib = "libgcc_s_sjlj-1.dll"
@@ -85,61 +85,61 @@ function __init__()
           function SpecialFunctions.erf(x::Float128)
               r = Ref{Float128}()
               ccall((:erfq, libquadmath),
-                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+                    Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}), r, x)
               Float128(r[])
           end
           function SpecialFunctions.erfc(x::Float128)
               r = Ref{Float128}()
               ccall((:erfcq, libquadmath),
-                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+                    Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}), r, x)
               Float128(r[])
           end
           function SpecialFunctions.besselj0(x::Float128)
               r = Ref{Float128}()
               ccall((:j0q, libquadmath),
-                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+                    Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}), r, x)
               Float128(r[])
           end
           function SpecialFunctions.besselj1(x::Float128)
               r = Ref{Float128}()
               ccall((:j1q, libquadmath),
-                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+                    Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}), r, x)
               Float128(r[])
           end
           function SpecialFunctions.bessely0(x::Float128)
               r = Ref{Float128}()
               ccall((:y0q, libquadmath),
-                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+                    Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}), r, x)
               Float128(r[])
           end
           function SpecialFunctions.bessely1(x::Float128)
               r = Ref{Float128}()
               ccall((:y1q, libquadmath),
-                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+                    Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}), r, x)
               Float128(r[])
           end
           function SpecialFunctions.besselj(n::Cint, x::Float128)
               r = Ref{Float128}()
               ccall((:jnq, libquadmath),
-                    Cvoid, (Ptr{Cfloat128},Cint, Cfloat128), r, n, x)
+                    Cvoid, (Ptr{Cfloat128}, Cint, Ref{Cfloat128}), r, n, x)
               Float128(r[])
           end
           function SpecialFunctions.bessely(n::Cint, x::Float128)
               r = Ref{Float128}()
               ccall((:ynq, libquadmath),
-                    Cvoid, (Ptr{Cfloat128},Cint, Cfloat128), r, n, x)
+                    Cvoid, (Ptr{Cfloat128}, Cint, Ref{Cfloat128}), r, n, x)
               Float128(r[])
           end
           function SpecialFunctions.gamma(x::Float128)
               r = Ref{Float128}()
               ccall((:tgammaq, libquadmath),
-                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+                    Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}), r, x)
               Float128(r[])
           end
           function SpecialFunctions.lgamma(x::Float128)
               r = Ref{Float128}()
               ccall((:lgammaq, libquadmath),
-                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}, ), r, x)
+                    Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}), r, x)
               Float128(r[])
           end
 
@@ -260,7 +260,7 @@ for (op, func) in ((:+, :__addtf3), (:-, :__subtf3), (:*, :__multf3), (:/, :__di
             function ($op)(x::Float128, y::Float128)
                 r = Ref{Cfloat128}()
                 ccall((@_symsym($func),quadoplib),
-                      Cvoid, (Ptr{Cfloat128},Ref{Cfloat128},Ref{Cfloat128}),
+                      Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}),
                       r, x, y)
                 Float128(r[])
             end
@@ -277,7 +277,7 @@ end
 if Sys.iswindows()
     function (-)(x::Float128)
         r = Ref{Cfloat128}()
-        ccall((:__negtf2,quadoplib), Cvoid, (Ptr{Cfloat128}, Cfloat128,),
+        ccall((:__negtf2,quadoplib), Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}),
               r, x)
         Float128(r[])
     end
@@ -290,7 +290,7 @@ if Sys.iswindows()
     function (^)(x::Float128, y::Float128)
         r = Ref{Cfloat128}()
         ccall((:powq, libquadmath), Cvoid,
-              (Ptr{Cfloat128},Cfloat128,Cfloat128), r, x, y)
+              (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}), r, x, y)
         Float128(r[])
     end
 else
@@ -326,7 +326,7 @@ for (f,fc) in (:abs => :fabs,
         @eval function $f(x::Float128)
             r = Ref{Cfloat128}()
             ccall(($(string(fc,:q)), libquadmath),
-                           Cvoid, (Ptr{Cfloat128}, Cfloat128, ), r, x)
+                           Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}), r, x)
             Float128(r[])
         end
     else
@@ -339,27 +339,60 @@ end
 
 ## two argument
 for f in (:copysign, :hypot, )
-    @eval function $f(x::Float128, y::Float128)
-       Float128(ccall(($(string(f,:q)), libquadmath), Cfloat128, (Cfloat128, Cfloat128), x, y))
+    if Sys.iswindows()
+        @eval function $f(x::Float128, y::Float128)
+            r = Ref{Cloat128}()
+            ccall(($(string(f,:q)), libquadmath), Cvoid,
+                           (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}),
+                           r, x, y)
+            Float128(r[])
+        end
+    else
+        @eval function $f(x::Float128, y::Float128)
+            Float128(ccall(($(string(f,:q)), libquadmath), Cfloat128, (Cfloat128, Cfloat128), x, y))
+        end
     end
 end
 
 flipsign(x::Float128, y::Float128) = signbit(y) ? -x : x
 
-function atan(x::Float128, y::Float128)
-    Float128(ccall((:atan2q, libquadmath), Cfloat128, (Cfloat128, Cfloat128), x, y))
-end
+if Sys.iswindows()
+    function atan(x::Float128, y::Float128)
+        r = Ref{Cloat128}()
+        ccall((:atan2q, libquadmath), Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}), r, x, y)
+        Float128(r[])
+    end
 
 ## misc
-fma(x::Float128, y::Float128, z::Float128) =
-    Float128(ccall((:fmaq,libquadmath), Cfloat128, (Cfloat128, Cfloat128, Cfloat128), x, y, z))
+    function fma(x::Float128, y::Float128, z::Float128)
+        r = Ref{Cloat128}()
+        ccall((:fmaq,libquadmath), Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}), r, x, y, z)
+        Float128(r[])
+    end
 
-isnan(x::Float128) =
-    0 != ccall((:isnanq,libquadmath), Cint, (Cfloat128, ), x)
-isinf(x::Float128) =
-    0 != ccall((:isinfq,libquadmath), Cint, (Cfloat128, ), x)
-isfinite(x::Float128) =
-    0 != ccall((:finiteq,libquadmath), Cint, (Cfloat128, ), x)
+    isnan(x::Float128) =
+        0 != ccall((:isnanq,libquadmath), Cint, (Ref{Cfloat128}, ), x)
+    isinf(x::Float128) =
+        0 != ccall((:isinfq,libquadmath), Cint, (Ref{Cfloat128}, ), x)
+    isfinite(x::Float128) =
+        0 != ccall((:finiteq,libquadmath), Cint, (Ref{Cfloat128}, ), x)
+else
+    function atan(x::Float128, y::Float128)
+        Float128(ccall((:atan2q, libquadmath), Cfloat128, (Cfloat128, Cfloat128), x, y))
+    end
+
+## misc
+    fma(x::Float128, y::Float128, z::Float128) =
+        Float128(ccall((:fmaq,libquadmath), Cfloat128, (Cfloat128, Cfloat128, Cfloat128), x, y, z))
+
+    isnan(x::Float128) =
+        0 != ccall((:isnanq,libquadmath), Cint, (Cfloat128, ), x)
+    isinf(x::Float128) =
+        0 != ccall((:isinfq,libquadmath), Cint, (Cfloat128, ), x)
+    isfinite(x::Float128) =
+        0 != ccall((:finiteq,libquadmath), Cint, (Cfloat128, ), x)
+end
+
 isinteger(x::Float128) = isfinite(x) && x === trunc(x)
 
 signbit(x::Float128) = signbit(reinterpret(Int128, x))
@@ -373,7 +406,7 @@ if Sys.iswindows()
     function ldexp(x::Float128, n::Cint)
         r = Ref{Cfloat128}()
         ccall((:ldexpq, libquadmath),
-              Cvoid, (Ptr{Cfloat128}, Cfloat128, Cint), r, x, n)
+              Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Cint), r, x, n)
         Float128(r[])
     end
 else
@@ -390,7 +423,7 @@ if Sys.iswindows()
         r = Ref{Cfloat128}()
         ri = Ref{Cint}()
         ccall((:frexpq, libquadmath),
-              Cvoid, (Ptr{Cfloat128}, Cfloat128, Ptr{Cint}), r, x, ri)
+              Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Ptr{Cint}), r, x, ri)
         return Float128(r[]), Int(ri[])
     end
 else
