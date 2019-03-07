@@ -25,13 +25,14 @@ elseif Sys.isunix()
     const quadoplib = "libgcc_s.so.1"
     const libquadmath = "libquadmath.so.0"
 elseif Sys.iswindows()
-    if Sys.WORD_SIZE == 8
+    if Sys.WORD_SIZE == 64
         const quadoplib = "libgcc_s_seh-1.dll"
     else
         const quadoplib = "libgcc_s_sjlj-1.dll"
     end
     const libquadmath = "libquadmath-0.dll"
 end
+const _WIN_PTR_ABI = Sys.iswindows() && (Sys.WORD_SIZE == 64)
 
 @static if Sys.isunix()
     # we use this slightly cumbersome definition to ensure that the value is passed
@@ -81,7 +82,7 @@ function __init__()
     @require SpecialFunctions="276daf66-3868-5448-9aa4-cd146d93841b" begin
       import .SpecialFunctions
 
-      if Sys.iswindows()
+      if _WIN_PTR_ABI
           function SpecialFunctions.erf(x::Float128)
               r = Ref{Float128}()
               ccall((:erfq, libquadmath),
@@ -173,7 +174,7 @@ fpinttype(::Type{Float128}) = UInt128
 Float128(x::Float128) = x
 
 ## Float64
-if Sys.iswindows()
+if _WIN_PTR_ABI
     function Float128(x::Float64)
         r = Ref{Cfloat128}()
         ccall((:__extenddftf2,quadoplib),
@@ -190,7 +191,7 @@ else
         ccall((:__trunctfdf2, quadoplib), Cdouble, (Cfloat128,), x)
 end
 
-if Sys.iswindows()
+if _WIN_PTR_ABI
     Int32(x::Float128) =
         ccall((:__fixtfsi, quadoplib), Int32, (Ref{Cfloat128},), x)
     function Float128(x::Int32)
@@ -231,7 +232,7 @@ Float128(x::Rational{T}) where T = Float128(numerator(x))/Float128(denominator(x
 
 # comparison
 
-if Sys.iswindows()
+if _WIN_PTR_ABI
     (==)(x::Float128, y::Float128) =
         ccall((:__eqtf2,quadoplib),
               Cint, (Ref{Cfloat128},Ref{Cfloat128}), x, y) == 0
@@ -255,7 +256,7 @@ end
 # arithmetic
 
 for (op, func) in ((:+, :__addtf3), (:-, :__subtf3), (:*, :__multf3), (:/, :__divtf3))
-    if Sys.iswindows()
+    if _WIN_PTR_ABI
         @eval begin
             function ($op)(x::Float128, y::Float128)
                 r = Ref{Cfloat128}()
@@ -274,7 +275,7 @@ for (op, func) in ((:+, :__addtf3), (:-, :__subtf3), (:*, :__multf3), (:/, :__di
         end
     end
 end
-if Sys.iswindows()
+if _WIN_PTR_ABI
     function (-)(x::Float128)
         r = Ref{Cfloat128}()
         ccall((:__negtf2,quadoplib), Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}),
@@ -286,7 +287,7 @@ else
         Float128(ccall((:__negtf2,quadoplib), Cfloat128, (Cfloat128,), x))
 end
 
-if Sys.iswindows()
+if _WIN_PTR_ABI
     function (^)(x::Float128, y::Float128)
         r = Ref{Cfloat128}()
         ccall((:powq, libquadmath), Cvoid,
@@ -306,7 +307,7 @@ for f in (:acos, :acosh, :asin, :asinh, :atan, :atanh, :cosh, :cos,
           :erf, :erfc, :exp, :expm1, :log, :log2, :log10, :log1p,
           :sin, :sinh, :sqrt, :tan, :tanh,
           :ceil, :floor, :trunc, )
-    if Sys.iswindows()
+    if _WIN_PTR_ABI
         @eval function $f(x::Float128)
             r = Ref{Cfloat128}()
             ccall(($(string(f,:q)), libquadmath),
@@ -322,7 +323,7 @@ for f in (:acos, :acosh, :asin, :asinh, :atan, :atanh, :cosh, :cos,
 end
 for (f,fc) in (:abs => :fabs,
                :round => :rint,)
-    if Sys.iswindows()
+    if _WIN_PTR_ABI
         @eval function $f(x::Float128)
             r = Ref{Cfloat128}()
             ccall(($(string(fc,:q)), libquadmath),
@@ -339,7 +340,7 @@ end
 
 ## two argument
 for f in (:copysign, :hypot, )
-    if Sys.iswindows()
+    if _WIN_PTR_ABI
         @eval function $f(x::Float128, y::Float128)
             r = Ref{Cloat128}()
             ccall(($(string(f,:q)), libquadmath), Cvoid,
@@ -356,7 +357,7 @@ end
 
 flipsign(x::Float128, y::Float128) = signbit(y) ? -x : x
 
-if Sys.iswindows()
+if _WIN_PTR_ABI
     function atan(x::Float128, y::Float128)
         r = Ref{Cloat128}()
         ccall((:atan2q, libquadmath), Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}), r, x, y)
@@ -402,7 +403,7 @@ eps(::Type{Float128}) = reinterpret(Float128, 0x3f8f_0000_0000_0000_0000_0000_00
 floatmin(::Type{Float128}) = reinterpret(Float128, 0x0001_0000_0000_0000_0000_0000_0000_0000)
 floatmax(::Type{Float128}) = reinterpret(Float128, 0x7ffe_ffff_ffff_ffff_ffff_ffff_ffff_ffff)
 
-if Sys.iswindows()
+if _WIN_PTR_ABI
     function ldexp(x::Float128, n::Cint)
         r = Ref{Cfloat128}()
         ccall((:ldexpq, libquadmath),
@@ -418,7 +419,7 @@ end
 ldexp(x::Float128, n::Integer) =
     ldexp(x, clamp(n, typemin(Cint), typemax(Cint)) % Cint)
 
-if Sys.iswindows()
+if _WIN_PTR_ABI
     function frexp(x::Float128)
         r = Ref{Cfloat128}()
         ri = Ref{Cint}()
@@ -607,7 +608,7 @@ widen(::Type{Float128}) = BigFloat
 
 # TODO: need to do this better
 
-if Sys.iswindows()
+if _WIN_PTR_ABI
     function parse(::Type{Float128}, s::AbstractString)
         r = Ref{Cfloat128}()
         ccall((:strtoflt128, libquadmath),
@@ -622,7 +623,7 @@ else
     end
 end
 
-if Sys.iswindows()
+if _WIN_PTR_ABI
     function string(x::Float128)
         lng = 64
         buf = Array{UInt8}(undef, lng + 1)
