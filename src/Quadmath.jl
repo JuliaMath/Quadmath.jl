@@ -72,6 +72,20 @@ elseif Sys.iswindows()
     primitive type Float128 <: AbstractFloat 128
     end
     const Cfloat128 = Float128
+
+    # This is used to force alignment of subsequent Float128 structs
+    # on the call stack. Let's hope nobody notices the overhead before
+    # the Julia compiler handles fp128 itself.
+    if Sys.WORD_SIZE == 32
+        struct PadPtr{T}
+            p::Ref{T}
+            d1::Int32
+            d2::Int32
+            d3::Int32
+        end
+        const PF128 = PadPtr{Cfloat128}
+        PadPtr(p::Ref{T}) where T = PadPtr(p,Int32(0),Int32(0),Int32(0))
+    end
 end
 
 macro _symsym(x)
@@ -143,7 +157,9 @@ function __init__()
                     Cvoid, (Ptr{Cfloat128},Ref{Cfloat128}), r, x)
               Float128(r[])
           end
-
+      elseif Sys.iswindows()
+          # Calling sequences are mysterious in this case.
+          @warn "SpecialFunctions are not properly defined for Float128"
       else
         SpecialFunctions.erf(x::Float128) = Float128(ccall((:erfq, libquadmath), Cfloat128, (Cfloat128, ), x))
         SpecialFunctions.erfc(x::Float128) = Float128(ccall((:erfcq, libquadmath), Cfloat128, (Cfloat128, ), x))
@@ -266,6 +282,16 @@ for (op, func) in ((:+, :__addtf3), (:-, :__subtf3), (:*, :__multf3), (:/, :__di
                 Float128(r[])
             end
         end
+    elseif Sys.iswindows()
+        @eval begin
+            function ($op)(x::Float128, y::Float128)
+                r = Ref{Cfloat128}()
+                p = PadPtr(r)
+                ccall((@_symsym($func),quadoplib),
+                               Cvoid, (PF128, Cfloat128, Cfloat128), p, x, y)
+                Float128(r[])
+            end
+        end
     else
         @eval begin
             function ($op)(x::Float128, y::Float128)
@@ -280,6 +306,13 @@ if _WIN_PTR_ABI
         r = Ref{Cfloat128}()
         ccall((:__negtf2,quadoplib), Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}),
               r, x)
+        Float128(r[])
+    end
+elseif Sys.iswindows()
+    function (-)(x::Float128)
+        r = Ref{Cfloat128}()
+        p = PadPtr(r)
+        ccall((:__negtf2,quadoplib), Cvoid, (PF128, Cfloat128), p, x)
         Float128(r[])
     end
 else
@@ -314,6 +347,14 @@ for f in (:acos, :acosh, :asin, :asinh, :atan, :atanh, :cosh, :cos,
                   Cvoid, (Ptr{Cfloat128}, Cfloat128, ), r, x)
             Float128(r[])
         end
+    elseif Sys.iswindows()
+        @eval function $f(x::Float128)
+            r = Ref{Cfloat128}()
+            p = PadPtr(r)
+            ccall(($(string(f,:q)), libquadmath),
+                  Cvoid, (PF128, Cfloat128, ), p, x)
+            Float128(r[])
+        end
     else
         @eval function $f(x::Float128)
             Float128(ccall(($(string(f,:q)), libquadmath),
@@ -328,6 +369,14 @@ for (f,fc) in (:abs => :fabs,
             r = Ref{Cfloat128}()
             ccall(($(string(fc,:q)), libquadmath),
                            Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}), r, x)
+            Float128(r[])
+        end
+    elseif Sys.iswindows()
+        @eval function $f(x::Float128)
+            r = Ref{Cfloat128}()
+            p = PadPtr(r)
+            ccall(($(string(fc,:q)), libquadmath),
+                           Cvoid, (PF128, Cfloat128), p, x)
             Float128(r[])
         end
     else
@@ -346,6 +395,15 @@ for f in (:copysign, :hypot, )
             ccall(($(string(f,:q)), libquadmath), Cvoid,
                            (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}),
                            r, x, y)
+            Float128(r[])
+        end
+    elseif Sys.iswindows()
+        @eval function $f(x::Float128, y::Float128)
+            r = Ref{Cloat128}()
+            p = PadPtr(r)
+            ccall(($(string(f,:q)), libquadmath), Cvoid,
+                           (PF128, Cfloat128, Cfloat128),
+                           p, x, y)
             Float128(r[])
         end
     else
@@ -378,13 +436,33 @@ if _WIN_PTR_ABI
     isfinite(x::Float128) =
         0 != ccall((:finiteq,libquadmath), Cint, (Ref{Cfloat128}, ), x)
 else
-    function atan(x::Float128, y::Float128)
-        Float128(ccall((:atan2q, libquadmath), Cfloat128, (Cfloat128, Cfloat128), x, y))
-    end
+    if Sys.iswindows()
+        function atan(x::Float128, y::Float128)
+            r = Ref{Cloat128}()
+            p = PadPtr(r)
+            ccall((:atan2q, libquadmath), Cvoid,
+                  (PF128, Cfloat128, Cfloat128), p, x, y)
+            Float128(r[])
+        end
+
+        function fma(x::Float128, y::Float128, z::Float128)
+            r = Ref{Cloat128}()
+            p = PadPtr(r)
+            ccall((:fmaq,libquadmath), Cvoid,
+                  (PF128, Cfloat128, Cfloat128, Cfloat128), p, x, y, z)
+            Float128(r[])
+        end
+    else
+        function atan(x::Float128, y::Float128)
+            Float128(ccall((:atan2q, libquadmath),
+                           Cfloat128, (Cfloat128, Cfloat128), x, y))
+        end
 
 ## misc
-    fma(x::Float128, y::Float128, z::Float128) =
-        Float128(ccall((:fmaq,libquadmath), Cfloat128, (Cfloat128, Cfloat128, Cfloat128), x, y, z))
+        fma(x::Float128, y::Float128, z::Float128) =
+            Float128(ccall((:fmaq,libquadmath), Cfloat128,
+                           (Cfloat128, Cfloat128, Cfloat128), x, y, z))
+    end
 
     isnan(x::Float128) =
         0 != ccall((:isnanq,libquadmath), Cint, (Cfloat128, ), x)
@@ -410,6 +488,14 @@ if _WIN_PTR_ABI
               Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Cint), r, x, n)
         Float128(r[])
     end
+elseif Sys.iswindows()
+    function ldexp(x::Float128, n::Cint)
+        r = Ref{Cfloat128}()
+        p = PadPtr(r)
+        ccall((:ldexpq, libquadmath),
+              Cvoid, (PF128, Cfloat128, Cint), p, x, n)
+        Float128(r[])
+    end
 else
     ldexp(x::Float128, n::Cint) =
         Float128(ccall((:ldexpq, libquadmath), Cfloat128, (Cfloat128, Cint),
@@ -425,6 +511,15 @@ if _WIN_PTR_ABI
         ri = Ref{Cint}()
         ccall((:frexpq, libquadmath),
               Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Ptr{Cint}), r, x, ri)
+        return Float128(r[]), Int(ri[])
+    end
+elseif Sys.iswindows()
+    function frexp(x::Float128)
+        r = Ref{Cfloat128}()
+        p = PadPtr(r)
+        ri = Ref{Cint}()
+        ccall((:frexpq, libquadmath),
+              Cvoid, (PF128, Cfloat128, Ptr{Cint}), p, x, ri)
         return Float128(r[]), Int(ri[])
     end
 else
