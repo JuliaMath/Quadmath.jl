@@ -60,3 +60,19 @@ end
     fpart, ipart = modf(x) .+ modf(y)
     @test x+y == ipart+fpart
 end
+
+@testset "transcendental etc. calls" begin
+    # at least enough to cover all the wrapping code
+    x = sqrt(Float128(2.0))
+    xd = Float64(x)
+    @test (x^Float128(4.0)) ≈ Float128(4.0)
+    @test exp(x) ≈ exp(xd)
+    @test abs(x) == x
+    @test hypot(Float128(3),Float128(4)) == Float128(5)
+    @test atan(x,x) ≈ Float128(pi) / 4
+    @test fma(x,x,Float128(-1.0)) ≈ Float128(1)
+end
+
+if !Sys.iswindows() || (Sys.WORD_SIZE == 64)
+    include("specfun.jl")
+end

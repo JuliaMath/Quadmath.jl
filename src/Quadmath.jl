@@ -327,6 +327,14 @@ if _WIN_PTR_ABI
               (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}), r, x, y)
         Float128(r[])
     end
+elseif Sys.iswindows()
+    function (^)(x::Float128, y::Float128)
+        r = Ref{Cfloat128}()
+        p = PadPtr(r)
+        ccall((:powq, libquadmath), Cvoid,
+              (PF128, Cfloat128, Cfloat128), p, x, y)
+        Float128(r[])
+    end
 else
     (^)(x::Float128, y::Float128) =
         Float128(ccall((:powq, libquadmath), Cfloat128,
@@ -391,7 +399,7 @@ end
 for f in (:copysign, :hypot, )
     if _WIN_PTR_ABI
         @eval function $f(x::Float128, y::Float128)
-            r = Ref{Cloat128}()
+            r = Ref{Cfloat128}()
             ccall(($(string(f,:q)), libquadmath), Cvoid,
                            (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}),
                            r, x, y)
@@ -399,7 +407,7 @@ for f in (:copysign, :hypot, )
         end
     elseif Sys.iswindows()
         @eval function $f(x::Float128, y::Float128)
-            r = Ref{Cloat128}()
+            r = Ref{Cfloat128}()
             p = PadPtr(r)
             ccall(($(string(f,:q)), libquadmath), Cvoid,
                            (PF128, Cfloat128, Cfloat128),
@@ -417,14 +425,14 @@ flipsign(x::Float128, y::Float128) = signbit(y) ? -x : x
 
 if _WIN_PTR_ABI
     function atan(x::Float128, y::Float128)
-        r = Ref{Cloat128}()
+        r = Ref{Cfloat128}()
         ccall((:atan2q, libquadmath), Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}), r, x, y)
         Float128(r[])
     end
 
 ## misc
     function fma(x::Float128, y::Float128, z::Float128)
-        r = Ref{Cloat128}()
+        r = Ref{Cfloat128}()
         ccall((:fmaq,libquadmath), Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}), r, x, y, z)
         Float128(r[])
     end
@@ -438,7 +446,7 @@ if _WIN_PTR_ABI
 else
     if Sys.iswindows()
         function atan(x::Float128, y::Float128)
-            r = Ref{Cloat128}()
+            r = Ref{Cfloat128}()
             p = PadPtr(r)
             ccall((:atan2q, libquadmath), Cvoid,
                   (PF128, Cfloat128, Cfloat128), p, x, y)
@@ -446,7 +454,7 @@ else
         end
 
         function fma(x::Float128, y::Float128, z::Float128)
-            r = Ref{Cloat128}()
+            r = Ref{Cfloat128}()
             p = PadPtr(r)
             ccall((:fmaq,libquadmath), Cvoid,
                   (PF128, Cfloat128, Cfloat128, Cfloat128), p, x, y, z)
