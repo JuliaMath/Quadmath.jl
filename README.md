@@ -15,8 +15,12 @@ Quadmath currently works on x86_64 Linux and macOS.
 - It does not work on ARM due to the lack of libquadmath support for that platform.
 
 ## Installation
+
+Quadmath can be installed and tested through the Julia package manager:
+
 ```julia
-Pkg.clone("https://github.com/JuliaMath/Quadmath.jl")
+Pkg.add("Quadmath")
+Pkg.test("Quadmath")
 ```
 
 ## Acknowledgements
