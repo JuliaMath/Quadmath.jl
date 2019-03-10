@@ -735,6 +735,16 @@ if _WIN_PTR_ABI
                     buf, lng + 1, "%.35Qe", x)
         return String(resize!(buf, lng))
     end
+elseif Sys.iswindows()
+    function string(x::Float128)
+        lng = 64
+        buf = Array{UInt8}(undef, lng + 1)
+        dummy = Int32(0) # for argument alignment on stack
+        lng = ccall((:quadmath_snprintf,libquadmath),
+                    Cint, (Ptr{UInt8}, Csize_t, Ptr{UInt8}, Cint, Cfloat128...),
+                    buf, lng + 1, "%.35Qe", dummy, x)
+        return String(resize!(buf, lng))
+    end
 else
     function string(x::Float128)
         lng = 64

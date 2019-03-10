@@ -73,6 +73,14 @@ end
     @test fma(x,x,Float128(-1.0)) ≈ Float128(1)
 end
 
+@testset "string conversion" begin
+    s = string(Float128(3.0))
+    p = r"3\.0+e\+0+"
+    m = match(p, s)
+    @test (m != nothing) && (m.match == s)
+    @test parse(Float128,"3.0") == Float128(3.0)
+end
+
 if !Sys.iswindows() || (Sys.WORD_SIZE == 64)
     include("specfun.jl")
 end
