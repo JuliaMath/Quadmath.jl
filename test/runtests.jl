@@ -81,6 +81,4 @@ end
     @test parse(Float128,"3.0") == Float128(3.0)
 end
 
-if !Sys.iswindows() || (Sys.WORD_SIZE == 64)
-    include("specfun.jl")
-end
+include("specfun.jl")
