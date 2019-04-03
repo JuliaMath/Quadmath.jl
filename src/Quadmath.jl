@@ -32,61 +32,83 @@ elseif Sys.iswindows()
     end
     const libquadmath = "libquadmath-0.dll"
 end
-const _WIN_PTR_ABI = Sys.iswindows() && (Sys.WORD_SIZE == 64)
 
-@static if Sys.isunix()
-    # we use this slightly cumbersome definition to ensure that the value is passed
-    # on the xmm registers, matching the x86_64 ABI for __float128.
-    const Cfloat128 = NTuple{2,VecElement{Float64}}
+macro ccall(expr)
+    @assert expr isa Expr && expr.head == :(::)
+    ret_type = expr.args[2]
 
-    struct Float128 <: AbstractFloat
-        data::Cfloat128
+    expr_call = expr.args[1]
+    @assert expr_call isa Expr && expr_call.head == :call
+    
+    expr_fname = expr_call.args[1]
+
+    if expr_fname isa Symbol
+        fname = QuoteNode(expr_fname)
+    elseif expr_fname isa Expr && expr_fname.head == :.
+        fname = :(($(expr_fname.args[2]), $(esc(expr_fname.args[1]))))
     end
-    convert(::Type{Float128}, x::Number) = Float128(x)
 
-    const ComplexF128 = Complex{Float128}
+    expr_args = expr_call.args[2:end]
+    
+    @assert all(ex isa Expr && ex.head == :(::) for ex in expr_args)   
+    
+    arg_names = [ex.args[1] for ex in expr_args]
+    arg_types = [ex.args[2] for ex in expr_args]
 
-    Base.cconvert(::Type{Cfloat128}, x::Float128) = x.data
-
-
-    # reinterpret
-    function reinterpret(::Type{UInt128}, x::Float128)
-        hi = reinterpret(UInt64, x.data[2].value)
-        lo = reinterpret(UInt64, x.data[1].value)
-        UInt128(hi) << 64 | lo
-    end
-    function reinterpret(::Type{Float128}, x::UInt128)
-        fhi = reinterpret(Float64, (x >> 64) % UInt64)
-        flo = reinterpret(Float64, x % UInt64)
-        Float128((VecElement(flo), VecElement(fhi)))
-    end
-    reinterpret(::Type{Unsigned}, x::Float128) = reinterpret(UInt128, x)
-    reinterpret(::Type{Signed}, x::Float128) = reinterpret(Int128, x)
-
-    reinterpret(::Type{Int128}, x::Float128) =
-        reinterpret(Int128, reinterpret(UInt128, x))
-    reinterpret(::Type{Float128}, x::Int128) =
-        reinterpret(Float128, reinterpret(UInt128, x))
-
-elseif Sys.iswindows()
-    primitive type Float128 <: AbstractFloat 128
-    end
-    const Cfloat128 = Float128
-
-    # This is used to force alignment of subsequent Float128 structs
-    # on the call stack. Let's hope nobody notices the overhead before
-    # the Julia compiler handles fp128 itself.
-    if Sys.WORD_SIZE == 32
-        struct PadPtr{T}
-            p::Ref{T}
-            d1::Int32
-            d2::Int32
-            d3::Int32
+    if Sys.isunix()
+        :(ccall($fname, $(esc(ret_type)), ($(esc.(arg_types)...),), $(esc.(arg_names)...)))
+    else
+        arg_types = [T == :Cfloat128 ? :(Ref{Cfloat128}) :
+                     T == :(Cfloat128...) ? :(Ref{Cfloat128}...) :
+                     T for T in arg_types]        
+        if ret_type == :Cfloat128
+            quote
+                r = Ref{Cfloat128}()
+                ccall($fname, Cvoid, (Ref{Cfloat128}, $(esc(arg_types...)),), r, $(esc(arg_names...)))
+                r[]
+            end                
+        else
+            :(ccall($fname, $(esc(ret_type)), ($(esc(arg_types...)),), $(esc(arg_names...))))
         end
-        const PF128 = PadPtr{Cfloat128}
-        PadPtr(p::Ref{T}) where T = PadPtr(p,Int32(0),Int32(0),Int32(0))
     end
 end
+
+
+const _WIN_PTR_ABI = Sys.iswindows() && (Sys.WORD_SIZE == 64)
+
+
+# we use this slightly cumbersome definition to ensure that the value is 128-bit aligned
+# and passed on the xmm registers, matching the x86_64 ABI for __float128.
+const Cfloat128 = NTuple{2,VecElement{Float64}}
+
+struct Float128 <: AbstractFloat
+    data::Cfloat128
+end
+convert(::Type{Float128}, x::Number) = Float128(x)
+
+const ComplexF128 = Complex{Float128}
+
+Base.cconvert(::Type{Cfloat128}, x::Float128) = x.data
+
+
+# reinterpret
+function reinterpret(::Type{UInt128}, x::Float128)
+    hi = reinterpret(UInt64, x.data[2].value)
+    lo = reinterpret(UInt64, x.data[1].value)
+    UInt128(hi) << 64 | lo
+end
+function reinterpret(::Type{Float128}, x::UInt128)
+    fhi = reinterpret(Float64, (x >> 64) % UInt64)
+    flo = reinterpret(Float64, x % UInt64)
+    Float128((VecElement(flo), VecElement(fhi)))
+end
+reinterpret(::Type{Unsigned}, x::Float128) = reinterpret(UInt128, x)
+reinterpret(::Type{Signed}, x::Float128) = reinterpret(Int128, x)
+
+reinterpret(::Type{Int128}, x::Float128) =
+    reinterpret(Int128, reinterpret(UInt128, x))
+reinterpret(::Type{Float128}, x::Int128) =
+    reinterpret(Float128, reinterpret(UInt128, x))
 
 function __init__()
     @require SpecialFunctions="276daf66-3868-5448-9aa4-cd146d93841b" begin
@@ -107,353 +129,105 @@ fpinttype(::Type{Float128}) = UInt128
 Float128(x::Float128) = x
 
 ## Float64
-if _WIN_PTR_ABI
-    function Float128(x::Float64)
-        r = Ref{Cfloat128}()
-        ccall((:__extenddftf2,quadoplib),
-                       Cvoid, (Ptr{Cfloat128}, Cdouble), r, x)
-        Float128(r[])
-    end
-    function Float64(x::Float128)
-        ccall((:__trunctfdf2,quadoplib), Cdouble, (Ref{Cfloat128},), x)
-    end
-else
-    Float128(x::Float64) =
-        Float128(ccall((:__extenddftf2, quadoplib), Cfloat128, (Cdouble,), x))
-    Float64(x::Float128) =
-        ccall((:__trunctfdf2, quadoplib), Cdouble, (Cfloat128,), x)
-end
+Float128(x::Float64) =
+    Float128(@ccall(quadoplib.__extenddftf2(x::Cdouble)::Cfloat128))
+Float64(x::Float128) =
+    @ccall(quadoplib.__trunctfdf2(x::Cfloat128)::Cdouble)
 
-if _WIN_PTR_ABI
-    Int32(x::Float128) =
-        ccall((:__fixtfsi, quadoplib), Int32, (Ref{Cfloat128},), x)
-    function Float128(x::Int32)
-        r = Ref{Cfloat128}()
-        ccall((:__floatsitf, quadoplib), Cvoid, (Ptr{Cfloat128}, Int32,), r, x)
-        Float128(r[])
-    end
+# Int32
+Float128(x::Int32) =
+    Float128(@ccall(quadoplib.__floatsitf(x::Int32)::Cfloat128))
+Int32(x::Float128) =
+    @ccall(quadoplib.__fixtfsi(x::Cfloat128)::Int32)
 
-    function Float128(x::UInt32)
-        r = Ref{Cfloat128}()
-        ccall((:__floatunsitf, quadoplib), Cvoid, (Ptr{Cfloat128}, UInt32,), r, x)
-        Float128(r[])
-    end
+# UInt32
+Float128(x::UInt32) =
+    Float128(@ccall(quadoplib.__floatunsitf(x::UInt32)::Cfloat128))
 
-    Int64(x::Float128) =
-        ccall((:__fixtfdi, quadoplib), Int64, (Ref{Cfloat128},), x)
-    function Float128(x::Int64)
-        r = Ref{Cfloat128}()
-        ccall((:__floatditf, quadoplib), Cvoid, (Ptr{Cfloat128}, Int64,), r, x)
-        Float128(r[])
-    end
-else
-    Int32(x::Float128) =
-        ccall((:__fixtfsi, quadoplib), Int32, (Cfloat128,), x)
-    Float128(x::Int32) =
-        Float128(ccall((:__floatsitf, quadoplib), Cfloat128, (Int32,), x))
+# Int64
+Float128(x::Int64) =
+    Float128(@ccall(quadoplib.__floatditf(x::Int64)::Cfloat128))
+Int64(x::Float128) =
+    @ccall(quadoplib.__fixtfdi(x::Cfloat128)::Int64)
 
-    Float128(x::UInt32) =
-        Float128(ccall((:__floatunsitf, quadoplib), Cfloat128, (UInt32,), x))
-
-    Int64(x::Float128) =
-        ccall((:__fixtfdi, quadoplib), Int64, (Cfloat128,), x)
-    Float128(x::Int64) =
-        Float128(ccall((:__floatditf, quadoplib), Cfloat128, (Int64,), x))
-end
-
+# Rational
 Float128(x::Rational{T}) where T = Float128(numerator(x))/Float128(denominator(x))
 
-# comparison
+# Comparison
+(==)(x::Float128, y::Float128) =
+    @ccall(quadoplib.__eqtf2(x::Cfloat128, y::Cfloat128)::Cint) == 0
+(<)(x::Float128, y::Float128) =
+    @ccall(quadoplib.__letf2(x::Cfloat128, y::Cfloat128)::Cint) == -1
+(<=)(x::Float128, y::Float128) =
+    @ccall(quadoplib.__letf2(x::Cfloat128, y::Cfloat128)::Cint) <= 0
 
-if _WIN_PTR_ABI
-    (==)(x::Float128, y::Float128) =
-        ccall((:__eqtf2,quadoplib),
-              Cint, (Ref{Cfloat128},Ref{Cfloat128}), x, y) == 0
-    (<)(x::Float128, y::Float128) =
-        ccall((:__letf2,quadoplib),
-              Cint, (Ref{Cfloat128},Ref{Cfloat128}), x, y) == -1
-    (<=)(x::Float128, y::Float128) =
-        ccall((:__letf2,quadoplib),
-              Cint, (Ref{Cfloat128},Ref{Cfloat128}), x, y) <= 0
-else
-    (==)(x::Float128, y::Float128) =
-        ccall((:__eqtf2,quadoplib), Cint, (Cfloat128,Cfloat128), x, y) == 0
+# Arithmetic
+(+)(x::Float128, y::Float128) =
+    Float128(@ccall(quadoplib.__addtf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
+(-)(x::Float128, y::Float128) =
+    Float128(@ccall(quadoplib.__subtf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
+(*)(x::Float128, y::Float128) =
+    Float128(@ccall(quadoplib.__multf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
+(/)(x::Float128, y::Float128) =
+    Float128(@ccall(quadoplib.__divtf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
-    (<)(x::Float128, y::Float128) =
-        ccall((:__letf2,quadoplib), Cint, (Cfloat128,Cfloat128), x, y) == -1
-
-    (<=)(x::Float128, y::Float128) =
-        ccall((:__letf2,quadoplib), Cint, (Cfloat128,Cfloat128), x, y) <= 0
-end
-
-# arithmetic
-
-for (op, func) in ((:+, :__addtf3), (:-, :__subtf3), (:*, :__multf3), (:/, :__divtf3))
-    if _WIN_PTR_ABI
-        @eval begin
-            function ($op)(x::Float128, y::Float128)
-                r = Ref{Cfloat128}()
-                ccall(($(string(func)),quadoplib),
-                      Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}),
-                      r, x, y)
-                Float128(r[])
-            end
-        end
-    elseif Sys.iswindows()
-        @eval begin
-            function ($op)(x::Float128, y::Float128)
-                r = Ref{Cfloat128}()
-                p = PadPtr(r)
-                ccall(($(string(func)),quadoplib),
-                               Cvoid, (PF128, Cfloat128, Cfloat128), p, x, y)
-                Float128(r[])
-            end
-        end
-    else
-        @eval begin
-            function ($op)(x::Float128, y::Float128)
-                Float128(ccall(($(string(func)),quadoplib),
-                               Cfloat128, (Cfloat128,Cfloat128), x, y))
-            end
-        end
-    end
-end
-if _WIN_PTR_ABI
-    function (-)(x::Float128)
-        r = Ref{Cfloat128}()
-        ccall((:__negtf2,quadoplib), Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}),
-              r, x)
-        Float128(r[])
-    end
-elseif Sys.iswindows()
-    function (-)(x::Float128)
-        r = Ref{Cfloat128}()
-        p = PadPtr(r)
-        ccall((:__negtf2,quadoplib), Cvoid, (PF128, Cfloat128), p, x)
-        Float128(r[])
-    end
-else
-    (-)(x::Float128) =
-        Float128(ccall((:__negtf2,quadoplib), Cfloat128, (Cfloat128,), x))
-end
-
-if _WIN_PTR_ABI
-    function (^)(x::Float128, y::Float128)
-        r = Ref{Cfloat128}()
-        ccall((:powq, libquadmath), Cvoid,
-              (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}), r, x, y)
-        Float128(r[])
-    end
-elseif Sys.iswindows()
-    function (^)(x::Float128, y::Float128)
-        r = Ref{Cfloat128}()
-        p = PadPtr(r)
-        ccall((:powq, libquadmath), Cvoid,
-              (PF128, Cfloat128, Cfloat128), p, x, y)
-        Float128(r[])
-    end
-else
-    (^)(x::Float128, y::Float128) =
-        Float128(ccall((:powq, libquadmath), Cfloat128,
-                       (Cfloat128,Cfloat128), x, y))
-end
-
-# math
+(-)(x::Float128) =
+    Float128(@ccall(quadoplib.__negtf2(x::Cfloat128)::Cfloat128))
 
 ## one argument
 for f in (:acos, :acosh, :asin, :asinh, :atan, :atanh, :cosh, :cos,
           :exp, :expm1, :log, :log2, :log10, :log1p,
           :sin, :sinh, :sqrt, :tan, :tanh,
           :ceil, :floor, :trunc, )
-    if _WIN_PTR_ABI
-        @eval function $f(x::Float128)
-            r = Ref{Cfloat128}()
-            ccall(($(string(f,:q)), libquadmath),
-                  Cvoid, (Ptr{Cfloat128}, Cfloat128, ), r, x)
-            Float128(r[])
-        end
-    elseif Sys.iswindows()
-        @eval function $f(x::Float128)
-            r = Ref{Cfloat128}()
-            p = PadPtr(r)
-            ccall(($(string(f,:q)), libquadmath),
-                  Cvoid, (PF128, Cfloat128, ), p, x)
-            Float128(r[])
-        end
-    else
-        @eval function $f(x::Float128)
-            Float128(ccall(($(string(f,:q)), libquadmath),
-                           Cfloat128, (Cfloat128, ), x))
-        end
+    @eval function $f(x::Float128)
+        Float128(@ccall(libquadmath.$(string(f,:q))(x::Cfloat128)::Cfloat128))
     end
 end
-for (f,fc) in ((:abs, :fabs),
-               (:round, :rint))
-    if _WIN_PTR_ABI
-        @eval function $f(x::Float128)
-            r = Ref{Cfloat128}()
-            ccall(($(string(fc,:q)), libquadmath),
-                           Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}), r, x)
-            Float128(r[])
-        end
-    elseif Sys.iswindows()
-        @eval function $f(x::Float128)
-            r = Ref{Cfloat128}()
-            p = PadPtr(r)
-            ccall(($(string(fc,:q)), libquadmath),
-                           Cvoid, (PF128, Cfloat128), p, x)
-            Float128(r[])
-        end
-    else
-        @eval function $f(x::Float128)
-            Float128(ccall(($(string(fc,:q)), libquadmath),
-                           Cfloat128, (Cfloat128, ), x))
-        end
-    end
-end
+
+abs(x::Float128) = Float128(@ccall(libquadmath.fabsq(x::Cfloat128)::Cfloat128))
+round(x::Float128) = Float128(@ccall(libquadmath.rintq(x::Cfloat128)::Cfloat128))
 
 ## two argument
-for f in (:copysign, :hypot, )
-    if _WIN_PTR_ABI
-        @eval function $f(x::Float128, y::Float128)
-            r = Ref{Cfloat128}()
-            ccall(($(string(f,:q)), libquadmath), Cvoid,
-                           (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}),
-                           r, x, y)
-            Float128(r[])
-        end
-    elseif Sys.iswindows()
-        @eval function $f(x::Float128, y::Float128)
-            r = Ref{Cfloat128}()
-            p = PadPtr(r)
-            ccall(($(string(f,:q)), libquadmath), Cvoid,
-                           (PF128, Cfloat128, Cfloat128),
-                           p, x, y)
-            Float128(r[])
-        end
-    else
-        @eval function $f(x::Float128, y::Float128)
-            Float128(ccall(($(string(f,:q)), libquadmath), Cfloat128, (Cfloat128, Cfloat128), x, y))
-        end
-    end
-end
-
-flipsign(x::Float128, y::Float128) = signbit(y) ? -x : x
-
-if _WIN_PTR_ABI
-    function atan(x::Float128, y::Float128)
-        r = Ref{Cfloat128}()
-        ccall((:atan2q, libquadmath), Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}), r, x, y)
-        Float128(r[])
-    end
+(^)(x::Float128, y::Float128) =
+    Float128(@ccall(libquadmath.powq(x::Cfloat128, y::Cfloat128)::Cfloat128))
+copysign(x::Float128, y::Float128) =
+    Float128(@ccall(libquadmath.copysignq(x::Cfloat128, y::Cfloat128)::Cfloat128))
+hypot(x::Float128, y::Float128) =
+    Float128(@ccall(libquadmath.hypotq(x::Cfloat128, y::Cfloat128)::Cfloat128))
+atan(x::Float128, y::Float128) =
+    Float128(@ccall(libquadmath.atan2q(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
 ## misc
-    function fma(x::Float128, y::Float128, z::Float128)
-        r = Ref{Cfloat128}()
-        ccall((:fmaq,libquadmath), Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}, Ref{Cfloat128}), r, x, y, z)
-        Float128(r[])
-    end
+fma(x::Float128, y::Float128, z::Float128) =
+    Float128(@ccall(libquadmath.fmaq(x::Cfloat128, y::Cfloat128, z::Cfloat128)::Cfloat128))
 
-    isnan(x::Float128) =
-        0 != ccall((:isnanq,libquadmath), Cint, (Ref{Cfloat128}, ), x)
-    isinf(x::Float128) =
-        0 != ccall((:isinfq,libquadmath), Cint, (Ref{Cfloat128}, ), x)
-    isfinite(x::Float128) =
-        0 != ccall((:finiteq,libquadmath), Cint, (Ref{Cfloat128}, ), x)
-else
-    if Sys.iswindows()
-        function atan(x::Float128, y::Float128)
-            r = Ref{Cfloat128}()
-            p = PadPtr(r)
-            ccall((:atan2q, libquadmath), Cvoid,
-                  (PF128, Cfloat128, Cfloat128), p, x, y)
-            Float128(r[])
-        end
 
-        function fma(x::Float128, y::Float128, z::Float128)
-            r = Ref{Cfloat128}()
-            p = PadPtr(r)
-            ccall((:fmaq,libquadmath), Cvoid,
-                  (PF128, Cfloat128, Cfloat128, Cfloat128), p, x, y, z)
-            Float128(r[])
-        end
-    else
-        function atan(x::Float128, y::Float128)
-            Float128(ccall((:atan2q, libquadmath),
-                           Cfloat128, (Cfloat128, Cfloat128), x, y))
-        end
-
-## misc
-        fma(x::Float128, y::Float128, z::Float128) =
-            Float128(ccall((:fmaq,libquadmath), Cfloat128,
-                           (Cfloat128, Cfloat128, Cfloat128), x, y, z))
-    end
-
-    isnan(x::Float128) =
-        0 != ccall((:isnanq,libquadmath), Cint, (Cfloat128, ), x)
-    isinf(x::Float128) =
-        0 != ccall((:isinfq,libquadmath), Cint, (Cfloat128, ), x)
-    isfinite(x::Float128) =
-        0 != ccall((:finiteq,libquadmath), Cint, (Cfloat128, ), x)
-end
+isnan(x::Float128) = 0 != @ccall(libquadmath.isnanq(x::Cfloat128)::Cint)
+isinf(x::Float128) = 0 != @ccall(libquadmath.isinfq(x::Cfloat128)::Cint)
+isfinite(x::Float128) = 0 != @ccall(libquadmath.finiteq(x::Cfloat128)::Cint)
 
 isinteger(x::Float128) = isfinite(x) && x === trunc(x)
 
 signbit(x::Float128) = signbit(reinterpret(Int128, x))
+
+flipsign(x::Float128, y::Float128) = signbit(y) ? -x : x
+
 precision(::Type{Float128}) = 113
 
 eps(::Type{Float128}) = reinterpret(Float128, 0x3f8f_0000_0000_0000_0000_0000_0000_0000)
 floatmin(::Type{Float128}) = reinterpret(Float128, 0x0001_0000_0000_0000_0000_0000_0000_0000)
 floatmax(::Type{Float128}) = reinterpret(Float128, 0x7ffe_ffff_ffff_ffff_ffff_ffff_ffff_ffff)
 
-if _WIN_PTR_ABI
-    function ldexp(x::Float128, n::Cint)
-        r = Ref{Cfloat128}()
-        ccall((:ldexpq, libquadmath),
-              Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Cint), r, x, n)
-        Float128(r[])
-    end
-elseif Sys.iswindows()
-    function ldexp(x::Float128, n::Cint)
-        r = Ref{Cfloat128}()
-        p = PadPtr(r)
-        ccall((:ldexpq, libquadmath),
-              Cvoid, (PF128, Cfloat128, Cint), p, x, n)
-        Float128(r[])
-    end
-else
-    ldexp(x::Float128, n::Cint) =
-        Float128(ccall((:ldexpq, libquadmath), Cfloat128, (Cfloat128, Cint),
-                       x, n))
-end
-
+ldexp(x::Float128, n::Cint) =
+    Float128(@ccall(libquadmath.ldexpq(x::Cfloat128, n::Cint)::Cfloat128))
 ldexp(x::Float128, n::Integer) =
     ldexp(x, clamp(n, typemin(Cint), typemax(Cint)) % Cint)
 
-if _WIN_PTR_ABI
-    function frexp(x::Float128)
-        r = Ref{Cfloat128}()
-        ri = Ref{Cint}()
-        ccall((:frexpq, libquadmath),
-              Cvoid, (Ptr{Cfloat128}, Ref{Cfloat128}, Ptr{Cint}), r, x, ri)
-        return Float128(r[]), Int(ri[])
-    end
-elseif Sys.iswindows()
-    function frexp(x::Float128)
-        r = Ref{Cfloat128}()
-        p = PadPtr(r)
-        ri = Ref{Cint}()
-        ccall((:frexpq, libquadmath),
-              Cvoid, (PF128, Cfloat128, Ptr{Cint}), p, x, ri)
-        return Float128(r[]), Int(ri[])
-    end
-else
-        function frexp(x::Float128)
-            r = Ref{Cint}()
-            y = Float128(ccall((:frexpq, libquadmath),
-                               Cfloat128, (Cfloat128, Ptr{Cint}), x, r))
-            return y, Int(r[])
-        end
+
+function frexp(x::Float128)
+    ri = Ref{Cint}()
+    f = Float128(@ccall(libquadmath.frexpq(x::Cfloat128, ri::Ptr{Cint})::Cfloat128))
+    return f, Int(ri[])
 end
 
 function modf(x::Float128)
@@ -627,50 +401,15 @@ promote_rule(::Type{Float128}, ::Type{<:Integer}) = Float128
 widen(::Type{Float128}) = BigFloat
 
 # TODO: need to do this better
-
-if _WIN_PTR_ABI
-    function parse(::Type{Float128}, s::AbstractString)
-        r = Ref{Cfloat128}()
-        ccall((:strtoflt128, libquadmath),
-              Cvoid, (Ptr{Cfloat128}, Cstring, Ptr{Ptr{Cchar}}),
-              r, s, C_NULL)
-        Float128(r[])
-    end
-else
-    function parse(::Type{Float128}, s::AbstractString)
-        Float128(ccall((:strtoflt128, libquadmath),
-                       Cfloat128, (Cstring, Ptr{Ptr{Cchar}}), s, C_NULL))
-    end
+function parse(::Type{Float128}, s::AbstractString)
+    Float128(@ccall(libquadmath.strtoflt128(s::Cstring, C_NULL::Ptr{Ptr{Cchar}})::Cfloat128))
 end
 
-if _WIN_PTR_ABI
-    function string(x::Float128)
-        lng = 64
-        buf = Array{UInt8}(undef, lng + 1)
-        lng = ccall((:quadmath_snprintf,libquadmath),
-                    Cint, (Ptr{UInt8}, Csize_t, Ptr{UInt8}, Ref{Cfloat128}...),
-                    buf, lng + 1, "%.35Qe", x)
-        return String(resize!(buf, lng))
-    end
-elseif Sys.iswindows()
-    function string(x::Float128)
-        lng = 64
-        buf = Array{UInt8}(undef, lng + 1)
-        dummy = Int32(0) # for argument alignment on stack
-        lng = ccall((:quadmath_snprintf,libquadmath),
-                    Cint, (Ptr{UInt8}, Csize_t, Ptr{UInt8}, Cint, Cfloat128...),
-                    buf, lng + 1, "%.35Qe", dummy, x)
-        return String(resize!(buf, lng))
-    end
-else
-    function string(x::Float128)
-        lng = 64
-        buf = Array{UInt8}(undef, lng + 1)
-        lng = ccall((:quadmath_snprintf,libquadmath),
-                    Cint, (Ptr{UInt8}, Csize_t, Ptr{UInt8}, Cfloat128...),
-                    buf, lng + 1, "%.35Qe", x)
-        return String(resize!(buf, lng))
-    end
+function string(x::Float128)
+    lng = 64
+    buf = Array{UInt8}(undef, lng + 1)
+    lng = @ccall(libquadmath.quadmath_snprintf(buf::Ptr{UInt8}, (lng+1)::Csize_t, "%.35Qe"::Ptr{UInt8}, x::(Cfloat128...))::Cint)
+    return String(resize!(buf, lng))
 end
 
 print(io::IO, b::Float128) = print(io, string(b))
