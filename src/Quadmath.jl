@@ -64,11 +64,11 @@ macro ccall(expr)
         if ret_type == :Cfloat128
             quote
                 r = Ref{Cfloat128}()
-                ccall($fname, Cvoid, (Ref{Cfloat128}, $(esc(arg_types...)),), r, $(esc(arg_names...)))
+                ccall($fname, Cvoid, (Ref{Cfloat128}, $(esc.(arg_types)...),), r, $(esc.(arg_names)...))
                 r[]
             end                
         else
-            :(ccall($fname, $(esc(ret_type)), ($(esc(arg_types...)),), $(esc(arg_names...))))
+            :(ccall($fname, $(esc(ret_type)), ($(esc.(arg_types)...),), $(esc.(arg_names)...)))
         end
     end
 end
