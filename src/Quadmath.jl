@@ -89,6 +89,7 @@ convert(::Type{Float128}, x::Number) = Float128(x)
 const ComplexF128 = Complex{Float128}
 
 Base.cconvert(::Type{Cfloat128}, x::Float128) = x.data
+Base.cconvert(::Type{Ref{Cfloat128}}, x::Float128) = Ref{Cfloat128}(x.data)
 
 
 # reinterpret
