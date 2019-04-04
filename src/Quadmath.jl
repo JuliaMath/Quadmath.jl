@@ -70,10 +70,6 @@ macro ccall(expr)
     end
 end
 
-
-const _WIN_PTR_ABI = Sys.iswindows() && (Sys.WORD_SIZE == 64)
-
-
 # we use this slightly cumbersome definition to ensure that the value is 128-bit aligned
 # and passed on the xmm registers, matching the x86_64 ABI for __float128.
 const Cfloat128 = NTuple{2,VecElement{Float64}}
