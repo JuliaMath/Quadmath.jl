@@ -45,6 +45,14 @@ end
     @test y == flipsign(y,  1)
 end
 
+@testset "arithmetic" begin
+    fpi = Float128(pi)
+    finvpi = inv(fpi)
+    @test (fpi + 3) - fpi == 3
+    @test fpi * finvpi === one(Float128)
+    @test finvpi / fpi == finvpi^2
+end
+
 @testset "modf" begin
     x = Float128(pi)
     fpart, ipart = modf(x)
