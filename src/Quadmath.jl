@@ -58,9 +58,6 @@ macro ccall(expr)
     if Sys.isunix()
         :(ccall($fname, $(esc(ret_type)), ($(esc.(arg_types)...),), $(esc.(arg_names)...)))
     else
-        arg_types = [T == :Cfloat128 ? :(Ref{Cfloat128}) :
-                     T == :(Cfloat128...) ? :(Ref{Cfloat128}...) :
-                     T for T in arg_types]        
         if ret_type == :Cfloat128
             quote
                 r = Ref{Cfloat128}()
