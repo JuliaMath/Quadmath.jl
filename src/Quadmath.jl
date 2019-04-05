@@ -122,30 +122,88 @@ fpinttype(::Type{Float128}) = UInt128
 # conversion
 Float128(x::Float128) = x
 
-## Float64
+# Float64
 Float128(x::Float64) =
     Float128(@ccall(quadoplib.__extenddftf2(x::Cdouble)::Cfloat128))
 Float64(x::Float128) =
     @ccall(quadoplib.__trunctfdf2(x::Cfloat128)::Cdouble)
 
-# Int32
+# Float32
+Float128(x::Float32) =
+    Float128(@ccall(quadoplib.__extendsftf2(x::Cfloat)::Cfloat128))
+Float32(x::Float128) =
+    @ccall(quadoplib.__trunctfsf2(x::Cfloat128)::Cfloat)
+
+# integer -> Float128
 Float128(x::Int32) =
     Float128(@ccall(quadoplib.__floatsitf(x::Int32)::Cfloat128))
-Int32(x::Float128) =
-    @ccall(quadoplib.__fixtfsi(x::Cfloat128)::Int32)
 
-# UInt32
 Float128(x::UInt32) =
     Float128(@ccall(quadoplib.__floatunsitf(x::UInt32)::Cfloat128))
 
-# Int64
 Float128(x::Int64) =
     Float128(@ccall(quadoplib.__floatditf(x::Int64)::Cfloat128))
-Int64(x::Float128) =
-    @ccall(quadoplib.__fixtfdi(x::Cfloat128)::Int64)
+
+Float128(x::UInt64) =
+    Float128(@ccall(quadoplib.__floatunditf(x::UInt64)::Cfloat128))
+
+Float128(x::Int16) = Float128(Int32(x))
+Float128(x::Int8) = Float128(Int32(x))
+Float128(x::UInt16) = Float128(UInt32(x))
+Float128(x::UInt8) = Float128(UInt32(x))
+
+function Float128(x::UInt128)
+    x == 0 && return Float128(0.0)
+    n = 128-leading_zeros(x) # ndigits0z(x,2)
+    if n <= 113
+        y = ((x % UInt128) << (113-n)) & significand_mask(Float128)
+    else
+        y = ((x >> (n-114)) % UInt128) & 0x001_ffff_ffff_ffff_ffff_ffff_ffff_ffff # keep 1 extra bit
+        y = (y+1)>>1 # round, ties up (extra leading bit in case of next exponent)
+        y &= ~UInt64(trailing_zeros(x) == (n-114)) # fix last bit to round to even
+    end
+    d = ((n+16382) % UInt128) << 112
+    # reinterpret(Float128, d + y)
+    d += y
+    if Sys.iswindows()
+        return reinterpret(Float128,d)
+    else
+        y1 = reinterpret(Float64,UInt64(d >> 64))
+        y2 = reinterpret(Float64,(d % UInt64))
+        return Float128((y2,y1))
+    end
+end
+
+function Float128(x::Int128)
+    x == 0 && return 0.0
+    s = reinterpret(UInt128,x) & sign_mask(Float128) # sign bit
+    x = abs(x) % UInt128
+    n = 128-leading_zeros(x) # ndigits0z(x,2)
+    if n <= 113
+        y = ((x % UInt128) << (113-n)) & significand_mask(Float128)
+    else
+        y = ((x >> (n-114)) % UInt128) & 0x0001_ffff_ffff_ffff_ffff_ffff_ffff_ffff # keep 1 extra bit
+        y = (y+1)>>1 # round, ties up (extra leading bit in case of next exponent)
+        y &= ~UInt64(trailing_zeros(x) == (n-114)) # fix last bit to round to even
+    end
+    d = ((n+16382) % UInt128) << 112
+    # reinterpret(Float128, s | d + y)
+    d = s | d + y
+    if Sys.iswindows()
+        return reinterpret(Float128,d)
+    else
+        y1 = reinterpret(Float64,UInt64(d >> 64))
+        y2 = reinterpret(Float64,(d % UInt64))
+        Float128((y2,y1))
+    end
+end
+
+# Float128 -> integer requires arithmetic, so is below
 
 # Rational
 Float128(x::Rational{T}) where T = Float128(numerator(x))/Float128(denominator(x))
+
+Float128(x::Bool) = x ? Float128(1) : Float128(0)
 
 # Comparison
 (==)(x::Float128, y::Float128) =
@@ -168,6 +226,85 @@ Float128(x::Rational{T}) where T = Float128(numerator(x))/Float128(denominator(x
 (-)(x::Float128) =
     Float128(@ccall(quadoplib.__negtf2(x::Cfloat128)::Cfloat128))
 
+# Float128 -> Integer
+unsafe_trunc(::Type{Int32}, x::Float128) =
+    @ccall(quadoplib.__fixtfsi(x::Cfloat128)::Int32)
+
+unsafe_trunc(::Type{Int64}, x::Float128) =
+    @ccall(quadoplib.__fixtfdi(x::Cfloat128)::Int64)
+
+unsafe_trunc(::Type{UInt32}, x::Float128) =
+    @ccall(quadoplib.__fixunstfsi(x::Cfloat128)::UInt32)
+
+unsafe_trunc(::Type{UInt64}, x::Float128) =
+    @ccall(quadoplib.__fixunstfdi(x::Cfloat128)::UInt64)
+
+function unsafe_trunc(::Type{UInt128}, x::Float128)
+    xu = reinterpret(UInt128,x)
+    k = (Int64(xu >> 112) & 0x07fff) - 16382 - 113
+    xu = (xu & significand_mask(Float128)) | 0x0001_0000_0000_0000_0000_0000_0000_0000
+    if k <= 0
+        UInt128(xu >> -k)
+    else
+        UInt128(xu) << k
+    end
+end
+function unsafe_trunc(::Type{Int128}, x::Float128)
+    copysign(unsafe_trunc(UInt128,x) % Int128, x)
+end
+trunc(::Type{Signed}, x::Float128) = trunc(Int,x)
+trunc(::Type{Unsigned}, x::Float128) = trunc(Int,x)
+trunc(::Type{Integer}, x::Float128) = trunc(Int,x)
+
+for Ti in (Int32, Int64, Int128, UInt32, UInt64, UInt128)
+    let Tf = Float128
+        if Ti <: Unsigned || sizeof(Ti) < sizeof(Tf)
+            # Here `Tf(typemin(Ti))-1` is exact, so we can compare the lower-bound
+            # directly. `Tf(typemax(Ti))+1` is either always exactly representable, or
+            # rounded to `Inf` (e.g. when `Ti==UInt128 && Tf==Float32`).
+            @eval begin
+                function trunc(::Type{$Ti},x::$Tf)
+                    if $(Tf(typemin(Ti))-one(Tf)) < x < $(Tf(typemax(Ti))+one(Tf))
+                        return unsafe_trunc($Ti,x)
+                    else
+                        throw(InexactError(:trunc, $Ti, x))
+                    end
+                end
+                function (::Type{$Ti})(x::$Tf)
+                    if ($(Tf(typemin(Ti))) <= x <= $(Tf(typemax(Ti)))) && (round(x, RoundToZero) == x)
+                        return unsafe_trunc($Ti,x)
+                    else
+                        throw(InexactError($(Expr(:quote,Ti.name.name)), $Ti, x))
+                    end
+                end
+            end
+        else
+            # Here `eps(Tf(typemin(Ti))) > 1`, so the only value which can be truncated to
+            # `Tf(typemin(Ti)` is itself. Similarly, `Tf(typemax(Ti))` is inexact and will
+            # be rounded up. This assumes that `Tf(typemin(Ti)) > -Inf`, which is true for
+            # these types, but not for `Float16` or larger integer types.
+            @eval begin
+                function trunc(::Type{$Ti},x::$Tf)
+                    if $(Tf(typemin(Ti))) <= x < $(Tf(typemax(Ti)))
+                        return unsafe_trunc($Ti,x)
+                    else
+                        throw(InexactError(:trunc, $Ti, x))
+                    end
+                end
+                function (::Type{$Ti})(x::$Tf)
+                    if ($(Tf(typemin(Ti))) <= x < $(Tf(typemax(Ti)))) && (round(x, RoundToZero) == x)
+                        return unsafe_trunc($Ti,x)
+                    else
+                        throw(InexactError($(Expr(:quote,Ti.name.name)), $Ti, x))
+                    end
+                end
+            end
+        end
+    end
+end
+
+## math
+
 ## one argument
 for f in (:acos, :acosh, :asin, :asinh, :atan, :atanh, :cosh, :cos,
           :exp, :expm1, :log, :log2, :log10, :log1p,
@@ -180,6 +317,9 @@ end
 
 abs(x::Float128) = Float128(@ccall(libquadmath.fabsq(x::Cfloat128)::Cfloat128))
 round(x::Float128) = Float128(@ccall(libquadmath.rintq(x::Cfloat128)::Cfloat128))
+round(x::Float128, r::RoundingMode{:Down}) = floor(x)
+round(x::Float128, r::RoundingMode{:Up}) = ceil(x)
+round(x::Float128, r::RoundingMode{:ToZero}) = round(x)
 
 ## two argument
 (^)(x::Float128, y::Float128) =

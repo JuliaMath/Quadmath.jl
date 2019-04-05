@@ -10,7 +10,7 @@ using Quadmath
     @test z == y
 end
 
-@testset "conversion $T" for T in (Float64, Int32, Int64, BigFloat, BigInt)
+@testset "conversion $T" for T in (Float32, Float64, Int32, Int64, Int128, UInt32, UInt64, UInt128, BigFloat, BigInt)
     @test Float128(T(1)) + Float128(T(2)) == Float128(T(3))
     @test Float128(T(1)) + Float128(T(2)) <= Float128(T(3))
     @test Float128(T(1)) + Float128(T(2)) != Float128(T(4))
@@ -20,6 +20,20 @@ end
     else
         @test T(Float128(T(1)) + Float128(T(2))) == T(3)
     end
+end
+
+@testset "conversion $T exceptions" for T in (Int32, Int64, UInt32, UInt64)
+    x = Float128(typemax(T))
+    @test_throws InexactError T(x+Float128(1))
+    x = Float128(typemin(T))
+    @test_throws InexactError T(x-Float128(1))
+end
+
+@testset "conversion $T exceptions" for T in (Float32, Float64)
+    x = Float128(typemax(T))
+    @test isinf(T(x+Float128(1)))
+    x = Float128(typemin(T))
+    @test isinf(T(x-Float128(1)))
 end
 
 @test Base.exponent_one(Float128) == reinterpret(UInt128, Float128(1.0))
