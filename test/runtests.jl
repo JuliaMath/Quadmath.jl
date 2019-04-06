@@ -20,6 +20,13 @@ end
     else
         @test T(Float128(T(1)) + Float128(T(2))) == T(3)
     end
+    if isbitstype(T) && T <: Integer
+        nb = 8*sizeof(T) - 5
+        x = T(9) << nb
+        xf = Float128(9) * 2.0^nb
+        @test Float128(x) == xf
+        @test T(xf) == x
+    end
 end
 
 @testset "conversion $T exceptions" for T in (Int32, Int64, UInt32, UInt64)
