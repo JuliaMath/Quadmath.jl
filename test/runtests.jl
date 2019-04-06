@@ -95,6 +95,11 @@ end
     @test fma(x,x,Float128(-1.0)) ≈ Float128(1)
 end
 
+@testset "misc. math" begin
+    x = sqrt(Float128(2.0))
+    @test abs(x^(-2) - Float128(0.5)) < 1.0e-32
+end
+
 @testset "string conversion" begin
     s = string(Float128(3.0))
     p = r"3\.0+e\+0+"

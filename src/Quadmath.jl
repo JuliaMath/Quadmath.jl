@@ -324,6 +324,15 @@ round(x::Float128, r::RoundingMode{:ToZero}) = round(x)
 ## two argument
 (^)(x::Float128, y::Float128) =
     Float128(@ccall(libquadmath.powq(x::Cfloat128, y::Cfloat128)::Cfloat128))
+
+# circumvent a failure in Base
+function (^)(x::Float128, p::Integer)
+    if p >= 0
+        Base.power_by_squaring(x,p)
+    else
+        Base.power_by_squaring(inv(x),-p)
+    end
+end
 copysign(x::Float128, y::Float128) =
     Float128(@ccall(libquadmath.copysignq(x::Cfloat128, y::Cfloat128)::Cfloat128))
 hypot(x::Float128, y::Float128) =
