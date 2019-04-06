@@ -549,4 +549,6 @@ end
 print(io::IO, b::Float128) = print(io, string(b))
 show(io::IO, b::Float128) = print(io, string(b))
 
+include("printf.jl")
+
 end # module Quadmath
