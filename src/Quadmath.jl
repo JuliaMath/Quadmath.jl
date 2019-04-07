@@ -158,9 +158,9 @@ function Float128(x::UInt128)
     if n <= 113
         y = ((x % UInt128) << (113-n)) & significand_mask(Float128)
     else
-        y = ((x >> (n-114)) % UInt128) & 0x001_ffff_ffff_ffff_ffff_ffff_ffff_ffff # keep 1 extra bit
+        y = ((x >> (n-114)) % UInt128) & 0x0001_ffff_ffff_ffff_ffff_ffff_ffff_ffff # keep 1 extra bit
         y = (y+1)>>1 # round, ties up (extra leading bit in case of next exponent)
-        y &= ~UInt64(trailing_zeros(x) == (n-114)) # fix last bit to round to even
+        y &= ~UInt128(trailing_zeros(x) == (n-114)) # fix last bit to round to even
     end
     d = ((n+16382) % UInt128) << 112
     # reinterpret(Float128, d + y)
@@ -184,7 +184,7 @@ function Float128(x::Int128)
     else
         y = ((x >> (n-114)) % UInt128) & 0x0001_ffff_ffff_ffff_ffff_ffff_ffff_ffff # keep 1 extra bit
         y = (y+1)>>1 # round, ties up (extra leading bit in case of next exponent)
-        y &= ~UInt64(trailing_zeros(x) == (n-114)) # fix last bit to round to even
+        y &= ~UInt128(trailing_zeros(x) == (n-114)) # fix last bit to round to even
     end
     d = ((n+16382) % UInt128) << 112
     # reinterpret(Float128, s | d + y)
