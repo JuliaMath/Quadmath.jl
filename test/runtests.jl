@@ -1,4 +1,4 @@
-using Test
+using Test, Random
 using Quadmath
 
 @testset "fp decomp" begin
@@ -10,6 +10,7 @@ using Quadmath
     @test z == y
 end
 
+@testset "conversions" begin
 @testset "conversion $T" for T in (Float32, Float64, Int32, Int64, Int128, UInt32, UInt64, UInt128, BigFloat, BigInt)
     @test Float128(T(1)) + Float128(T(2)) == Float128(T(3))
     @test Float128(T(1)) + Float128(T(2)) <= Float128(T(3))
@@ -43,8 +44,6 @@ end
     @test isinf(T(x-Float128(1)))
 end
 
-@test Base.exponent_one(Float128) == reinterpret(UInt128, Float128(1.0))
-
 @testset "BigFloat" begin
     x = parse(Float128, "0.1")
     y = parse(Float128, "0.2")
@@ -58,6 +57,9 @@ end
     @test Float64(x+y) == Float64(BigInt(x) + BigInt(y))
     @test x+y == Float128(BigInt(x) + BigInt(y))    
 end
+end
+
+@test Base.exponent_one(Float128) == reinterpret(UInt128, Float128(1.0))
 
 @testset "flipsign" begin
     x = Float128( 2.0)
@@ -105,6 +107,28 @@ end
 @testset "misc. math" begin
     x = sqrt(Float128(2.0))
     @test abs(x^(-2) - Float128(0.5)) < 1.0e-32
+    m = maxintfloat(Float128)
+    @test m+one(Float128) == m
+    @test m-one(Float128) != m
+end
+
+function hist(X, n)
+    v = zeros(Int, n)
+    for x in X
+        v[floor(Int, x*n) + 1] += 1
+    end
+    v
+end
+
+@testset "random" begin
+    # test for sanity and coarse uniformity
+    @test typeof(rand(Float128)) == Float128
+    for rng in [MersenneTwister(), RandomDevice()]
+        counts = hist(rand(rng, Float128, 2000), 4)
+        @test minimum(counts) > 300
+        counts = hist([rand(rng, Float128) for i in 1:2000], 4)
+        @test minimum(counts) > 300
+    end
 end
 
 @testset "string conversion" begin

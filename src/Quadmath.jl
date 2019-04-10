@@ -15,8 +15,10 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           copysign, flipsign, max, min, hypot, abs,
           ldexp, frexp, modf, nextfloat, eps,
           isinf, isnan, isfinite, isinteger,
-          floatmin, floatmax, precision, signbit,
+          floatmin, floatmax, precision, signbit, maxintfloat,
           Int32, Int64, Float64, BigFloat, BigInt
+
+using Random
 
 if Sys.isapple()
     const quadoplib = "libquadmath.0"
@@ -361,6 +363,8 @@ eps(::Type{Float128}) = reinterpret(Float128, 0x3f8f_0000_0000_0000_0000_0000_00
 floatmin(::Type{Float128}) = reinterpret(Float128, 0x0001_0000_0000_0000_0000_0000_0000_0000)
 floatmax(::Type{Float128}) = reinterpret(Float128, 0x7ffe_ffff_ffff_ffff_ffff_ffff_ffff_ffff)
 
+maxintfloat(::Type{Float128}) = Float128(0x0002_0000_0000_0000_0000_0000_0000_0000)
+
 ldexp(x::Float128, n::Cint) =
     Float128(@ccall(libquadmath.ldexpq(x::Cfloat128, n::Cint)::Cfloat128))
 ldexp(x::Float128, n::Integer) =
@@ -542,6 +546,14 @@ promote_rule(::Type{Float128}, ::Type{<:Integer}) = Float128
 
 #widen(::Type{Float64}) = Float128
 widen(::Type{Float128}) = BigFloat
+
+function Random.rand(rng::AbstractRNG, s::Random.SamplerTrivial{Random.CloseOpen01{Float128}})
+    u = rand(rng, UInt128)
+    x = (reinterpret(Float128, u & Base.significand_mask(Float128)
+                     | Base.exponent_one(Float128))
+         - one(Float128))
+    return x
+end
 
 # TODO: need to do this better
 function parse(::Type{Float128}, s::AbstractString)
