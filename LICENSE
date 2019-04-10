@@ -1,6 +1,6 @@
 Quadmath.jl is licensed under the MIT License:
 
-Copyright (c) 2016-2019: Harald Hofstätter, Simon Byrne
+Copyright (c) 2016-2019: Harald Hofstätter, Simon Byrne, Ralph Smith
 
 portions derived from Julia Base and stdlib:
 
