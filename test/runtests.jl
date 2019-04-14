@@ -11,7 +11,7 @@ using Quadmath
 end
 
 @testset "conversions" begin
-@testset "conversion $T" for T in (Float32, Float64, Int32, Int64, Int128, UInt32, UInt64, UInt128, BigFloat, BigInt)
+@testset "conversion $T" for T in (Float16, Float32, Float64, Int32, Int64, Int128, UInt32, UInt64, UInt128, BigFloat, BigInt)
     @test Float128(T(1)) + Float128(T(2)) == Float128(T(3))
     @test Float128(T(1)) + Float128(T(2)) <= Float128(T(3))
     @test Float128(T(1)) + Float128(T(2)) != Float128(T(4))

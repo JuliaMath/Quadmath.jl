@@ -136,6 +136,10 @@ Float128(x::Float32) =
 Float32(x::Float128) =
     @ccall(quadoplib.__trunctfsf2(x::Cfloat128)::Cfloat)
 
+# Float16
+Float128(x::Float16) = Float128(Float32(x))
+Float16(x::Float128) = Float16(Float32(x)) # TODO: avoid double rounding
+
 # integer -> Float128
 Float128(x::Int32) =
     Float128(@ccall(quadoplib.__floatsitf(x::Int32)::Cfloat128))
