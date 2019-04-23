@@ -92,6 +92,25 @@ end
     @test x+y == ipart+fpart
 end
 
+isnan128(x) = isa(x, Float128) && isnan(x)
+isinf128(x) = isa(x, Float128) && isinf(x)
+
+@testset "nonfinite" begin
+    Zero = Float128(0)
+    One = Float128(1)
+    huge = floatmax(Float128)
+    myinf = huge + huge
+    myminf = -myinf
+    @test isinf128(myinf)
+    @test isnan128(Zero / Zero)
+    @test isinf128(One / Zero)
+    @test isnan128(myinf - myinf)
+    @test isnan128(myinf + myminf)
+    @test Inf128 === myinf
+    @test typemax(Float128) === myinf
+    @test typemin(Float128) === myminf
+end
+
 @testset "transcendental etc. calls" begin
     # at least enough to cover all the wrapping code
     x = sqrt(Float128(2.0))
@@ -101,7 +120,14 @@ end
     @test abs(x) == x
     @test hypot(Float128(3),Float128(4)) == Float128(5)
     @test atan(x,x) ≈ Float128(pi) / 4
+    h = floatmax(Float128)
+    @test isinf(h+h)
     @test fma(x,x,Float128(-1.0)) ≈ Float128(1)
+    if Sys.iswindows()
+        @test_broken isinf(h+h)
+    else
+        @test isinf(h+h)
+    end
 end
 
 @testset "misc. math" begin
