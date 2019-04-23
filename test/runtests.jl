@@ -121,7 +121,9 @@ end
         @test abs(x) == x
         @test hypot(Float128(3),Float128(4)) == Float128(5)
         @test atan(x,x) ≈ Float128(pi) / 4
-        @test fma(x,x,Float128(-1.0)) ≈ Float128(1)
+        if !Sys.iswindows()
+            @test fma(x,x,Float128(-1.0)) ≈ Float128(1)
+        end
     end
     @testset "complex" begin
         x = sqrt(ComplexF128(1.0 + 1.0im))
