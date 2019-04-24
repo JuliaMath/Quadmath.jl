@@ -8,7 +8,7 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           significand_mask, exponent, significand,
           promote_rule, widen,
           string, print, show, parse,
-          acos, acosh, asin, asinh, atan, atanh, cosh, cos,
+          acos, acosh, asin, asinh, atan, atanh, cosh, cos, sincos,
           exp, expm1, log, log2, log10, log1p, sin, sinh, sqrt,
           tan, tanh,
           ceil, floor, trunc, round, fma,
@@ -41,7 +41,7 @@ macro ccall(expr)
 
     expr_call = expr.args[1]
     @assert expr_call isa Expr && expr_call.head == :call
-    
+
     expr_fname = expr_call.args[1]
 
     if expr_fname isa Symbol
@@ -51,9 +51,9 @@ macro ccall(expr)
     end
 
     expr_args = expr_call.args[2:end]
-    
-    @assert all(ex isa Expr && ex.head == :(::) for ex in expr_args)   
-    
+
+    @assert all(ex isa Expr && ex.head == :(::) for ex in expr_args)
+
     arg_names = [ex.args[1] for ex in expr_args]
     arg_types = [ex.args[2] for ex in expr_args]
 
@@ -65,7 +65,7 @@ macro ccall(expr)
                 r = Ref{Cfloat128}()
                 ccall($fname, Cvoid, (Ref{Cfloat128}, $(esc.(arg_types)...),), r, $(esc.(arg_names)...))
                 r[]
-            end                
+            end
         else
             :(ccall($fname, $(esc(ret_type)), ($(esc.(arg_types)...),), $(esc.(arg_names)...)))
         end
@@ -345,11 +345,15 @@ hypot(x::Float128, y::Float128) =
     Float128(@ccall(libquadmath.hypotq(x::Cfloat128, y::Cfloat128)::Cfloat128))
 atan(x::Float128, y::Float128) =
     Float128(@ccall(libquadmath.atan2q(x::Cfloat128, y::Cfloat128)::Cfloat128))
+sincos(x::Float128) = (sin(x), cos(x))
 
 ## misc
-fma(x::Float128, y::Float128, z::Float128) =
-    Float128(@ccall(libquadmath.fmaq(x::Cfloat128, y::Cfloat128, z::Cfloat128)::Cfloat128))
-
+@static if !Sys.iswindows()
+    # disable fma on Windows until rounding mode issue fixed
+    # https://github.com/JuliaMath/Quadmath.jl/issues/31
+    fma(x::Float128, y::Float128, z::Float128) =
+        Float128(@ccall(libquadmath.fmaq(x::Cfloat128, y::Cfloat128, z::Cfloat128)::Cfloat128))
+end
 
 isnan(x::Float128) = 0 != @ccall(libquadmath.isnanq(x::Cfloat128)::Cint)
 isinf(x::Float128) = 0 != @ccall(libquadmath.isinfq(x::Cfloat128)::Cint)
@@ -366,8 +370,8 @@ precision(::Type{Float128}) = 113
 eps(::Type{Float128}) = reinterpret(Float128, 0x3f8f_0000_0000_0000_0000_0000_0000_0000)
 floatmin(::Type{Float128}) = reinterpret(Float128, 0x0001_0000_0000_0000_0000_0000_0000_0000)
 floatmax(::Type{Float128}) = reinterpret(Float128, 0x7ffe_ffff_ffff_ffff_ffff_ffff_ffff_ffff)
-
 maxintfloat(::Type{Float128}) = Float128(0x0002_0000_0000_0000_0000_0000_0000_0000)
+
 """
     Inf128
 
