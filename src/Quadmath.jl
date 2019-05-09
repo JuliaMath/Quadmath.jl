@@ -511,9 +511,9 @@ function Float128(x::BigFloat)
     elseif k >= -16381-112
         prec = 113 + (k + 16381)
     elseif k == -16381-113 && abs(y) > 0.5
-        z = reinterepret(Float128, UInt128(1))
+        z = reinterpret(Float128, UInt128(1))
     else
-        z = reinterepret(Float128, UInt128(0))
+        z = reinterpret(Float128, UInt128(0))
     end
 
     @static if VERSION < v"1.1"
