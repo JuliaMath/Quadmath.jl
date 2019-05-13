@@ -1,5 +1,4 @@
 module Quadmath
-using Requires
 
 export Float128, ComplexF128, Inf128
 
