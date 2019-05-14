@@ -106,9 +106,7 @@ reinterpret(::Type{Float128}, x::Int128) =
     reinterpret(Float128, reinterpret(UInt128, x))
 
 function __init__()
-    @require SpecialFunctions="276daf66-3868-5448-9aa4-cd146d93841b" begin
-        include("specfun.jl")
-    end
+    include("specfun.jl")
 end
 
 
