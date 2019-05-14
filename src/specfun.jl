@@ -1,4 +1,4 @@
-import SpecialFunctions
+import .SpecialFunctions
 
 SpecialFunctions.erf(x::Float128) =
     Float128(@ccall(libquadmath.erfq(x::Cfloat128)::Cfloat128))
