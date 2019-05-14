@@ -1,4 +1,4 @@
-import SpecialFunctions
+import .SpecialFunctions
 
 @testset "special functions" begin
     # The intention here is not to check the accuracy of the libraries,
