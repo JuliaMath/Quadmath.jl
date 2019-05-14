@@ -1,6 +1,3 @@
-using SpecialFunctions
-using Test
-
 @testset "special functions" begin
     # The intention here is not to check the accuracy of the libraries,
     # rather the sanity of library calls:
