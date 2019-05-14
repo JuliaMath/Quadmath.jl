@@ -1,4 +1,4 @@
-using Quadmath
+using Quadmath, SpecialFunctions
 using Random, Test
 
 @testset "fp decomp" begin
