@@ -1,6 +1,6 @@
 name = "Quadmath"
 uuid = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
-version = "0.3.2"
+version = "0.4.0"
 
 [compat]
 julia = "1.0"
