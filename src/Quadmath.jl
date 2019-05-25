@@ -1,4 +1,5 @@
 module Quadmath
+using Requires
 
 export Float128, ComplexF128, Inf128
 
@@ -104,6 +105,12 @@ reinterpret(::Type{Int128}, x::Float128) =
     reinterpret(Int128, reinterpret(UInt128, x))
 reinterpret(::Type{Float128}, x::Int128) =
     reinterpret(Float128, reinterpret(UInt128, x))
+
+function __init__()
+    @require SpecialFunctions="276daf66-3868-5448-9aa4-cd146d93841b" begin
+        include("specfun.jl")
+    end
+end
 
 
 sign_mask(::Type{Float128}) =        0x8000_0000_0000_0000_0000_0000_0000_0000
@@ -579,7 +586,6 @@ end
 print(io::IO, b::Float128) = print(io, string(b))
 show(io::IO, b::Float128) = print(io, string(b))
 
-include("specfun.jl")
 include("printf.jl")
 
 end # module Quadmath
