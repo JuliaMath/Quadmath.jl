@@ -1,5 +1,5 @@
-using Quadmath, SpecialFunctions
-using Random, Test
+using Test, Random
+using Quadmath
 
 @testset "fp decomp" begin
     y = Float128(2.0)
