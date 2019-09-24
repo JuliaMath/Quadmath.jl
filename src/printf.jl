@@ -1,4 +1,4 @@
-import Base.Printf: ini_dec, fix_dec, ini_hex, ini_HEX
+import Printf: ini_dec, fix_dec, ini_hex, ini_HEX
 
 if VERSION < v"1.1"
 using Base.Grisu: DIGITSs
