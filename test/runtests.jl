@@ -173,6 +173,13 @@ end
     @test parse(Float128,"3.0") == Float128(3.0)
 end
 
+@testset "irrationals" begin
+    tiny = 2eps(Float128(1))
+    @test abs(cos(Float128(pi)) + 1) < tiny
+    @test abs(log(Float128(ℯ)) - 1) < tiny
+    @test abs((2*Float128(MathConstants.golden) - 1)^2 - 5) < 5 * tiny
+end
+
 include("specfun.jl")
 
 include("printf.jl")
