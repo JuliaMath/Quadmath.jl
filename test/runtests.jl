@@ -180,6 +180,8 @@ end
     @test abs((2*Float128(MathConstants.golden) - 1)^2 - 5) < 5 * tiny
 end
 
+include("hashing.jl")
+
 include("specfun.jl")
 
 include("printf.jl")
