@@ -180,6 +180,54 @@ end
     @test abs((2*Float128(MathConstants.golden) - 1)^2 - 5) < 5 * tiny
 end
 
+@testset "rationals" begin
+    @test Float128(0.5) == 1//2
+    # onetenth = 1/Float128(10)
+    # apparently identical, but do the same as Base test:
+    onetenth = parse(Float128, "0.1")
+    @test onetenth != 1//10
+    # bias + log2(1/8):
+    a = Int128(1) << 115
+    # rounding as indicated by BigFloat:
+    @test onetenth == (a ÷ 10 + 1) // a
+    @test Inf128 == 1//0
+    @test -Inf128 == -1//0
+    fm = floatmin(Float128)
+    @test fm != 1//(BigInt(2)^16382+1)
+    @test fm == 1//(BigInt(2)^16382)
+    @test fm != 1//(BigInt(2)^16382-1)
+    @test fm/2 != 1//(BigInt(2)^16383+1)
+    @test fm/2 == 1//(BigInt(2)^16383)
+    @test fm/2 != 1//(BigInt(2)^16383-1)
+    tiny = nextfloat(Float128(0.0))
+    @test tiny != 1//(BigInt(2)^16494+1)
+    @test tiny == 1//(BigInt(2)^16494)
+    @test tiny != 1//(BigInt(2)^16494-1)
+
+    onethird = 1/Float128(3)
+    onefifth = 1/Float128(5)
+    @test onethird < 1//3
+    @test !(1//3 < onethird)
+    @test -onethird < 1//3
+    @test -onethird > -1//3
+    @test onethird > -1//3
+    @test onefifth > 1//5
+    @test 1//3 < Inf128
+    @test 0//1 < Inf128
+    @test 1//0 == Inf128
+    @test -1//0 == -Inf128
+    @test -1//0 != Inf128
+    @test 1//0 != -Inf128
+    @test !(1//0 < Inf128)
+    Zero = Float128(0)
+    fnan = Zero / Zero
+    @test !(1//3 < fnan)
+    @test !(1//3 == fnan)
+    @test !(1//3 > fnan)
+end
+
+include("hashing.jl")
+
 include("specfun.jl")
 
 include("printf.jl")

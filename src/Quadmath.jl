@@ -11,7 +11,7 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           acos, acosh, asin, asinh, atan, atanh, cosh, cos, sincos,
           exp, expm1, log, log2, log10, log1p, sin, sinh, sqrt,
           tan, tanh,
-          ceil, floor, trunc, round, fma,
+          ceil, floor, trunc, round, fma, decompose,
           copysign, flipsign, max, min, hypot, abs,
           ldexp, frexp, modf, nextfloat, typemax, typemin, eps,
           isinf, isnan, isfinite, isinteger,
@@ -563,6 +563,17 @@ promote_rule(::Type{Float128}, ::Type{<:Integer}) = Float128
 
 #widen(::Type{Float64}) = Float128
 widen(::Type{Float128}) = BigFloat
+
+function decompose(x::Float128)::Tuple{Int128, Int, Int}
+    isnan(x) && return 0, 0, 0
+    isinf(x) && return ifelse(x < 0, -1, 1), 0, 0
+    n = reinterpret(UInt128, x)
+    s = (n & significand_mask(Float128)) % Int128
+    e = ((n & exponent_mask(Float128)) >> 112) % Int
+    s |= Int128(e != 0) << 112
+    d = ifelse(signbit(x), -1, 1)
+    s, e - 16495 + (e == 0), d
+end
 
 function Random.rand(rng::AbstractRNG, s::Random.SamplerTrivial{Random.CloseOpen01{Float128}})
     u = rand(rng, UInt128)
