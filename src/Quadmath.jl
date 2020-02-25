@@ -263,46 +263,44 @@ trunc(::Type{Unsigned}, x::Float128) = trunc(Int,x)
 trunc(::Type{Integer}, x::Float128) = trunc(Int,x)
 
 for Ti in (Int32, Int64, Int128, UInt32, UInt64, UInt128)
-    let Tf = Float128
-        if Ti <: Unsigned || sizeof(Ti) < sizeof(Tf)
-            # Here `Tf(typemin(Ti))-1` is exact, so we can compare the lower-bound
-            # directly. `Tf(typemax(Ti))+1` is either always exactly representable, or
-            # rounded to `Inf` (e.g. when `Ti==UInt128 && Tf==Float32`).
-            @eval begin
-                function trunc(::Type{$Ti},x::$Tf)
-                    if $(Tf(typemin(Ti))-one(Tf)) < x < $(Tf(typemax(Ti))+one(Tf))
-                        return unsafe_trunc($Ti,x)
-                    else
-                        throw(InexactError(:trunc, $Ti, x))
-                    end
-                end
-                function (::Type{$Ti})(x::$Tf)
-                    if ($(Tf(typemin(Ti))) <= x <= $(Tf(typemax(Ti)))) && (round(x, RoundToZero) == x)
-                        return unsafe_trunc($Ti,x)
-                    else
-                        throw(InexactError($(Expr(:quote,Ti.name.name)), $Ti, x))
-                    end
+    if Ti <: Unsigned || sizeof(Ti) < sizeof(Float128)
+        # Here `Float128(typemin(Ti))-1` is exact, so we can compare the lower-bound
+        # directly. `Float128(typemax(Ti))+1` is either always exactly representable, or
+        # rounded to `Inf` (e.g. when `Ti==UInt128 && Float128==Float32`).
+        @eval begin
+            function trunc(::Type{$Ti},x::Float128)
+                if Float128(typemin($Ti)) - one(Float128) < x < Float128(typemax($Ti)) + one(Float128)
+                    return unsafe_trunc($Ti,x)
+                else
+                    throw(InexactError(:trunc, $Ti, x))
                 end
             end
-        else
-            # Here `eps(Tf(typemin(Ti))) > 1`, so the only value which can be truncated to
-            # `Tf(typemin(Ti)` is itself. Similarly, `Tf(typemax(Ti))` is inexact and will
-            # be rounded up. This assumes that `Tf(typemin(Ti)) > -Inf`, which is true for
-            # these types, but not for `Float16` or larger integer types.
-            @eval begin
-                function trunc(::Type{$Ti},x::$Tf)
-                    if $(Tf(typemin(Ti))) <= x < $(Tf(typemax(Ti)))
-                        return unsafe_trunc($Ti,x)
-                    else
-                        throw(InexactError(:trunc, $Ti, x))
-                    end
+            function (::Type{$Ti})(x::Float128)
+                if (Float128(typemin($Ti)) <= x <= Float128(typemax($Ti))) && (round(x, RoundToZero) == x)
+                    return unsafe_trunc($Ti,x)
+                else
+                    throw(InexactError($(Expr(:quote,Ti.name.name)), $Ti, x))
                 end
-                function (::Type{$Ti})(x::$Tf)
-                    if ($(Tf(typemin(Ti))) <= x < $(Tf(typemax(Ti)))) && (round(x, RoundToZero) == x)
-                        return unsafe_trunc($Ti,x)
-                    else
-                        throw(InexactError($(Expr(:quote,Ti.name.name)), $Ti, x))
-                    end
+            end
+        end
+    else
+        # Here `eps(Float128(typemin(Ti))) > 1`, so the only value which can be truncated to
+        # `Float128(typemin(Ti)` is itself. Similarly, `Float128(typemax(Ti))` is inexact and will
+        # be rounded up. This assumes that `Float128(typemin(Ti)) > -Inf`, which is true for
+        # these types, but not for `Float16` or larger integer types.
+        @eval begin
+            function trunc(::Type{$Ti},x::Float128)
+                if Float128(typemin($Ti)) <= x < Float128(typemax($Ti))
+                    return unsafe_trunc($Ti,x)
+                else
+                    throw(InexactError(:trunc, $Ti, x))
+                end
+            end
+            function (::Type{$Ti})(x::Float128)
+                if (Float128(typemin($Ti)) <= x < Float128(typemax($Ti))) && (round(x, RoundToZero) == x)
+                    return unsafe_trunc($Ti,x)
+                else
+                    throw(InexactError($(Expr(:quote,Ti.name.name)), $Ti, x))
                 end
             end
         end
