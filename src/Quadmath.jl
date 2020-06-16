@@ -347,10 +347,16 @@ sincos(x::Float128) = (sin(x), cos(x))
 
 ## misc
 @static if !Sys.iswindows()
-    # disable fma on Windows until rounding mode issue fixed
-    # https://github.com/JuliaMath/Quadmath.jl/issues/31
     fma(x::Float128, y::Float128, z::Float128) =
         Float128(@ccall(libquadmath.fmaq(x::Cfloat128, y::Cfloat128, z::Cfloat128)::Cfloat128))
+else # use BigFloats (https://github.com/JuliaMath/Quadmath.jl/issues/31)
+    function fma(x::Float128, y::Float128, z::Float128)
+        oldprec = precision(BigFloat)
+        setprecision(BigFloat, 512) # 512 > significand_bits(Float128) * 3.5
+        result = Float128(fma(BigFloat(x), BigFloat(y), BigFloat(z)))
+        setprecision(BigFloat, oldprec)
+        return result
+    end    
 end
 
 isnan(x::Float128) = 0 != @ccall(libquadmath.isnanq(x::Cfloat128)::Cint)
