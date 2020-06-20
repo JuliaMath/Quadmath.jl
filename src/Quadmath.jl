@@ -352,7 +352,7 @@ sincos(x::Float128) = (sin(x), cos(x))
 else # use BigFloats (https://github.com/JuliaMath/Quadmath.jl/issues/31)
     function fma(x::Float128, y::Float128, z::Float128)
         oldprec = precision(BigFloat)
-        setprecision(BigFloat, 192) # 1.5 * bitsof(Float64) == 192 > significand_bits(Float128)
+        setprecision(BigFloat, 113) # significand_bits(Float128) + hiddenbit
         result = Float128(fma(BigFloat(x), BigFloat(y), BigFloat(z)))
         setprecision(BigFloat, oldprec)
         return result
