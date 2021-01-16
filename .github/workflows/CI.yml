@@ -14,8 +14,9 @@ jobs:
       matrix:
         version:
           - '1.0'
-          - '1.2'
-#          - 'nightly'
+          - '1.5'
+          - '1.6'
+          - 'nightly'
         os:
           - ubuntu-latest
           - macOS-latest
