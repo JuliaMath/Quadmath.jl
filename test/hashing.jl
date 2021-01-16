@@ -43,8 +43,7 @@ end
     a = coerce(T, x),
     b = coerce(S, x)
     T == Float128 || S == Float128 || continue # other types are not our problem
-    #println("$(typeof(a)) $a")
-    #println("$(typeof(b)) $b")
-    @test isequal(a,b) == (hash(a)==hash(b))
+    # equality must imply same hash; converse is not guaranteed
+    @test !(isequal(a,b) && (hash(a) != hash(b)))
   end
 end
