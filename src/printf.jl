@@ -1,3 +1,4 @@
+if VERSION < v"1.6.0-beta"
 import Printf: ini_dec, fix_dec, ini_hex, ini_HEX
 
 if VERSION < v"1.1"
@@ -48,4 +49,11 @@ function fp128_printf(out, d::Float128, flags::String, width::Int, precision::In
     lng > 0 || error("invalid printf formatting for Float128")
     unsafe_write(out, pointer(digits), min(lng, bufsiz-1))
     return (false, ())
+end
+
+else
+    # Julia v1.6+
+    # placeholder
+    import Printf
+    Printf.tofloat(x::Float128) = BigFloat(x)
 end
