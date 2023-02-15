@@ -21,7 +21,11 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
 
 using Random
 
-if Sys.isapple()
+
+if Sys.isapple() && Sys.ARCH == :x86_64
+    const quadoplib = "libgcc_s.1.dylib"
+    const libquadmath = "libquadmath.0"
+elseif Sys.isapple() && Sys.ARCH == :aarch64
     const quadoplib = "libgcc_s.1.1.dylib"
     const libquadmath = "libquadmath.0"
 elseif Sys.isunix()
