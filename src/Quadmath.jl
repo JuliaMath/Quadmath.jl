@@ -83,6 +83,9 @@ const Cfloat128 = NTuple{2,VecElement{Float64}}
 
 struct Float128 <: AbstractFloat
     data::Cfloat128
+    function Float128(data::Cfloat128)
+        new(data)
+    end
 end
 convert(::Type{Float128}, x::Number) = Float128(x)
 
@@ -145,6 +148,10 @@ Float128(x::Float128) = x
 Float128(x::Float16) = Float128(Float32(x))
 Float16(x::Float128) = Float16(Float64(x)) # TODO: avoid double rounding
 
+# TwicePrecision
+Float128(x::Base.TwicePrecision{Float64}) =
+    Float128(x.hi) + Float128(x.lo)
+
 # integer -> Float128
 @assume_effects :foldable Float128(x::Int32) =
     Float128(@ccall(quadoplib.__floatsitf(x::Int32)::Cfloat128))
@@ -181,7 +188,7 @@ function Float128(x::UInt128)
     else
         y1 = reinterpret(Float64,UInt64(d >> 64))
         y2 = reinterpret(Float64,(d % UInt64))
-        return Float128((y2,y1))
+        return Float128((VecElement(y2),VecElement(y1)))
     end
 end
 
@@ -205,7 +212,7 @@ function Float128(x::Int128)
     else
         y1 = reinterpret(Float64,UInt64(d >> 64))
         y2 = reinterpret(Float64,(d % UInt64))
-        Float128((y2,y1))
+        Float128((VecElement(y2),VecElement(y1)))
     end
 end
 
