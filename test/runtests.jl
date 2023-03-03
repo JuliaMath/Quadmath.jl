@@ -226,6 +226,17 @@ end
     @test !(1//3 > fnan)
 end
 
+@testset "ambiguities" begin
+    @test Float128(1.0+0.0im) === Float128(1.0)
+    @test_throws InexactError Float128(1.0+2.0im)
+
+    @test Float128('a') === Float128(Int('a'))
+
+    t_hi = 0.1
+    t_lo = Float64(big"0.1" - t_hi)
+    @test Float128(Base.TwicePrecision(t_hi, t_lo)) == Float128(t_hi) + Float128(t_lo)
+end
+
 include("hashing.jl")
 
 include("specfun.jl")
