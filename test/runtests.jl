@@ -242,3 +242,6 @@ include("hashing.jl")
 include("specfun.jl")
 
 include("printf.jl")
+
+using Aqua
+Aqua.test_all(Quadmath)
