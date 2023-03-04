@@ -1,6 +1,6 @@
 name = "Quadmath"
 uuid = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
-version = "0.5.7"
+version = "0.5.8"
 
 [deps]
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
