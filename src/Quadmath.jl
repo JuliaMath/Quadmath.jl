@@ -356,7 +356,7 @@ end
 @assume_effects :foldable atan(x::Float128, y::Float128) =
     Float128(@ccall(libquadmath.atan2q(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
-Base.Integer(x::Float128) = Int64(x)
+Base.Integer(x::Float128) = Int(x)
 @assume_effects :foldable Base.rem(x::Float128, y::Float128) =
     Float128(@ccall(libquadmath.remainderq(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
