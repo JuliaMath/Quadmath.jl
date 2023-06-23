@@ -224,6 +224,7 @@ end
     @test !(1//3 < fnan)
     @test !(1//3 == fnan)
     @test !(1//3 > fnan)
+    @test [Float128(-10//1):Float128(1//10):Float128(0//1);] isa Any
 end
 
 @testset "ambiguities" begin
