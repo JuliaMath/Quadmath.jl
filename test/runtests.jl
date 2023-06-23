@@ -144,6 +144,7 @@ end
     m = maxintfloat(Float128)
     @test m+one(Float128) == m
     @test m-one(Float128) != m
+    @test rem(Float128(3//2), Float128(1//2)) == 0.0
 end
 
 function hist(X, n)
