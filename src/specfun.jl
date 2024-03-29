@@ -1,6 +1,6 @@
 import .SpecialFunctions
 import .SpecialFunctions: erf, erfc, besselj0, besselj1, bessely0, bessely1,
-    besselj, bessely, gamma, lgamma
+    besselj, bessely, gamma, lgamma, logabsgamma
 
 erf(x::Float128) =
     Float128(@ccall(libquadmath.erfq(x::Cfloat128)::Cfloat128))
@@ -26,3 +26,8 @@ gamma(x::Float128) =
     Float128(@ccall(libquadmath.tgammaq(x::Cfloat128)::Cfloat128))
 lgamma(x::Float128) =
     Float128(@ccall(libquadmath.lgammaq(x::Cfloat128)::Cfloat128))
+
+function logabsgamma(x::Float128)
+    sign = x >= 0 ? 1 : 2*mod(ceil(Int64,x),2)-1
+    return lgamma(x), sign
+end
