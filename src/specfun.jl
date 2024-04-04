@@ -28,6 +28,10 @@ lgamma(x::Float128) =
     Float128(@ccall(libquadmath.lgammaq(x::Cfloat128)::Cfloat128))
 
 function logabsgamma(x::Float128)
-    sign = x >= 0 ? 1 : 2*mod(ceil(Int64,x),2)-1
+    if isfinite(x)
+      sign = x >= 0 ? 1 : 2*mod(ceil(Int64,x),2)-1
+    else
+      sign = 1
+    end
     return lgamma(x), sign
 end
