@@ -466,6 +466,14 @@ Float128(x::Irrational{T}) where {T} = Float128(BigFloat(x))
 
 import Base.MPFR
 
+@static if VERSION >= v"1.12.0-DEV.1343"
+    const _big_setindex! = Base.setindex!
+    const _big_getindex = Base.getindex
+else
+    const _big_setindex! = unsafe_store!
+    const _big_getindex = unsafe_load
+end
+
 function BigFloat(x::Float128; precision=precision(BigFloat))
     if !isfinite(x) || iszero(x)
         @static if VERSION < v"1.1"
@@ -490,13 +498,13 @@ function BigFloat(x::Float128; precision=precision(BigFloat))
     i = cld(precision, sizeof(MPFR.Limb)*8)
     while u != 0
         w = (u >> (128-sizeof(MPFR.Limb)*8)) % MPFR.Limb
-        unsafe_store!(b.d, w, i)
+        _big_setindex!(b.d, w, i)
         i -= 1
         u <<= sizeof(MPFR.Limb)*8
     end
     # set remaining bits to zero
     while i > 0
-        unsafe_store!(b.d, zero(MPFR.Limb), i)
+        _big_setindex!(b.d, zero(MPFR.Limb), i)
         i -= 1
     end
 
@@ -547,7 +555,7 @@ function Float128(x::BigFloat)
     j = 113
     while i > 0
         j -= sizeof(MPFR.Limb)*8
-        u |= (unsafe_load(y.d, i) % UInt128) << j
+        u |= (_big_getindex(y.d, i) % UInt128) << j
         i -= 1
     end
     u &= significand_mask(Float128)
