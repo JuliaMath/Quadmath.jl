@@ -17,7 +17,7 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           ldexp, frexp, modf, nextfloat, typemax, typemin, eps,
           isinf, isnan, isfinite, isinteger,
           floatmin, floatmax, precision, signbit, maxintfloat,
-          Int32, Int64, Float64, BigFloat, BigInt
+          Int32, Int64, Float16, Float32, Float64, BigFloat, BigInt
 
 using Random
 
