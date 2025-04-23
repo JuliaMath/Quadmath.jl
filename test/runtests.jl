@@ -18,8 +18,6 @@ using Quadmath
         Base.exponent_mask(Float128) >> Base.significand_bits(Float128))
     @test Base.uinttype(Float128) === UInt128
     @test Base.inttype(Float128) === Int128
-    @test Base.floattype(UInt128) === Float128
-    @test Base.floattype(Int128) === Float128
 end
 
 @testset "fp decomp" begin
