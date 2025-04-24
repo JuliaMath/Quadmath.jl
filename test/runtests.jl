@@ -1,6 +1,25 @@
 using Test, Random
 using Quadmath
 
+@testset "fp properties" begin
+    # Test that the definitions of sign_mask, exponent_mask, significand_bits,
+    # etc. are compatible with the definitions in base/float.jl. Compare to:
+    # https://github.com/JuliaLang/julia/blob/5595d20a2877560583cd4891ce91605d10b1bb75/base/float.jl#L106
+    @test Base.significand_bits(Float128) ===
+        trailing_ones(Base.significand_mask(Float128))
+    @test Base.exponent_bits(Float128) ===
+        sizeof(Float128)*8 - Base.significand_bits(Float128) - 1
+    @test Base.exponent_bias(Float128) === Int(
+        Base.exponent_one(Float128) >> Base.significand_bits(Float128))
+    @test Base.exponent_max(Float128) ===
+        Int(Base.exponent_mask(Float128) >> Base.significand_bits(Float128)) -
+            Base.exponent_bias(Float128) - 1
+    @test Base.exponent_raw_max(Float128) === Int(
+        Base.exponent_mask(Float128) >> Base.significand_bits(Float128))
+    @test Base.uinttype(Float128) === UInt128
+    @test Base.inttype(Float128) === Int128
+end
+
 @testset "fp decomp" begin
     y = Float128(2.0)
     x,n = frexp(y)

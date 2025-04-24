@@ -6,7 +6,9 @@ export Float128, ComplexF128, Inf128
 
 import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           reinterpret, sign_mask, exponent_mask, exponent_one, exponent_half,
-          significand_mask, exponent, significand,
+          significand_mask, significand_bits, exponent_bits, exponent_bias,
+          exponent_max, exponent_raw_max, uinttype, inttype, floattype,
+          exponent, significand,
           promote_rule, widen,
           string, print, show, parse,
           acos, acosh, asin, asinh, atan, atanh, cosh, cos, sincos,
@@ -127,7 +129,18 @@ exponent_one(::Type{Float128}) =     0x3fff_0000_0000_0000_0000_0000_0000_0000
 exponent_half(::Type{Float128}) =    0x3ffe_0000_0000_0000_0000_0000_0000_0000
 significand_mask(::Type{Float128}) = 0x0000_ffff_ffff_ffff_ffff_ffff_ffff_ffff
 
-fpinttype(::Type{Float128}) = UInt128
+significand_bits(::Type{Float128}) = 112
+exponent_bits(::Type{Float128}) = 15
+exponent_bias(::Type{Float128}) = 16383
+exponent_max(::Type{Float128}) = 16383
+exponent_raw_max(::Type{Float128}) = 32767
+
+uinttype(::Type{Float128}) = UInt128
+inttype(::Type{Float128}) = Int128
+# TODO: Logically speaking, we should also make the following definitions,
+# but this would constitute type piracy under Aqua.jl rules.
+# floattype(::Type{UInt128}) = Float128
+# floattype(::Type{Int128}) = Float128
 
 # conversion
 Float128(x::Float128) = x
