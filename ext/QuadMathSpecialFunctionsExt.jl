@@ -1,5 +1,8 @@
-import .SpecialFunctions
-import .SpecialFunctions: erf, erfc, besselj0, besselj1, bessely0, bessely1,
+module QuadMathSpecialFunctionsExt
+
+using Quadmath: libquadmath, Float128, Cfloat128
+import SpecialFunctions
+import SpecialFunctions: erf, erfc, besselj0, besselj1, bessely0, bessely1,
     besselj, bessely, gamma, logabsgamma
 
 erf(x::Float128) =
@@ -29,4 +32,6 @@ function logabsgamma(x::Float128)
     result = Float128(@ccall(libquadmath.lgammaq(x::Cfloat128)::Cfloat128))
     sign = !isfinite(result) || x >= 0 || !iszero(mod(ceil(x), 2)) ? 1 : -1
     return result, sign
+end
+
 end
