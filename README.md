@@ -1,6 +1,6 @@
 # Quadmath.jl
 
-[![GitHub CI Build Status](https://github.com/JuliaMath/Quadmath.jl/workflows/CI/badge.svg)](https://github.com/JuliaMath/Quadmath.jl/actions)
+[![CI](https://github.com/JuliaMath/Quadmath.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaMath/Quadmath.jl/actions/workflows/CI.yml)
 
 This is a Julia interface to libquadmath, providing a `Float128` type corresponding to the IEEE754 binary128 floating point format.
 
