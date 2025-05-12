@@ -41,7 +41,7 @@ elseif Sys.iswindows()
     const libquadmath = "libquadmath-0.dll"
 end
 
-macro ccall(expr)
+macro quad_ccall(expr)
     @assert expr isa Expr && expr.head == :(::)
     ret_type = expr.args[2]
 
@@ -139,15 +139,15 @@ Float128(x::Float128) = x
 
 # Float64
 @assume_effects :foldable Float128(x::Float64) =
-    Float128(@ccall(quadoplib.__extenddftf2(x::Cdouble)::Cfloat128))
+    Float128(@quad_ccall(quadoplib.__extenddftf2(x::Cdouble)::Cfloat128))
 @assume_effects :foldable Float64(x::Float128) =
-    @ccall(quadoplib.__trunctfdf2(x::Cfloat128)::Cdouble)
+    @quad_ccall(quadoplib.__trunctfdf2(x::Cfloat128)::Cdouble)
 
 # Float32
 @assume_effects :foldable Float128(x::Float32) =
-    Float128(@ccall(quadoplib.__extendsftf2(x::Cfloat)::Cfloat128))
+    Float128(@quad_ccall(quadoplib.__extendsftf2(x::Cfloat)::Cfloat128))
 @assume_effects :foldable Float32(x::Float128) =
-    @ccall(quadoplib.__trunctfsf2(x::Cfloat128)::Cfloat)
+    @quad_ccall(quadoplib.__trunctfsf2(x::Cfloat128)::Cfloat)
 
 # Float16
 Float128(x::Float16) = Float128(Float32(x))
@@ -159,16 +159,16 @@ Float128(x::Base.TwicePrecision{Float64}) =
 
 # integer -> Float128
 @assume_effects :foldable Float128(x::Int32) =
-    Float128(@ccall(quadoplib.__floatsitf(x::Int32)::Cfloat128))
+    Float128(@quad_ccall(quadoplib.__floatsitf(x::Int32)::Cfloat128))
 
 @assume_effects :foldable Float128(x::UInt32) =
-    Float128(@ccall(quadoplib.__floatunsitf(x::UInt32)::Cfloat128))
+    Float128(@quad_ccall(quadoplib.__floatunsitf(x::UInt32)::Cfloat128))
 
 @assume_effects :foldable Float128(x::Int64) =
-    Float128(@ccall(quadoplib.__floatditf(x::Int64)::Cfloat128))
+    Float128(@quad_ccall(quadoplib.__floatditf(x::Int64)::Cfloat128))
 
 @assume_effects :foldable Float128(x::UInt64) =
-    Float128(@ccall(quadoplib.__floatunditf(x::UInt64)::Cfloat128))
+    Float128(@quad_ccall(quadoplib.__floatunditf(x::UInt64)::Cfloat128))
 
 Float128(x::Int16) = Float128(Int32(x))
 Float128(x::Int8) = Float128(Int32(x))
@@ -230,37 +230,37 @@ Float128(x::Bool) = x ? Float128(1) : Float128(0)
 
 # Comparison
 @assume_effects :foldable (==)(x::Float128, y::Float128) =
-    @ccall(quadoplib.__eqtf2(x::Cfloat128, y::Cfloat128)::Cint) == 0
+    @quad_ccall(quadoplib.__eqtf2(x::Cfloat128, y::Cfloat128)::Cint) == 0
 @assume_effects :foldable (<)(x::Float128, y::Float128) =
-    @ccall(quadoplib.__letf2(x::Cfloat128, y::Cfloat128)::Cint) == -1
+    @quad_ccall(quadoplib.__letf2(x::Cfloat128, y::Cfloat128)::Cint) == -1
 @assume_effects :foldable (<=)(x::Float128, y::Float128) =
-    @ccall(quadoplib.__letf2(x::Cfloat128, y::Cfloat128)::Cint) <= 0
+    @quad_ccall(quadoplib.__letf2(x::Cfloat128, y::Cfloat128)::Cint) <= 0
 
 # Arithmetic
 @assume_effects :foldable (+)(x::Float128, y::Float128) =
-    Float128(@ccall(quadoplib.__addtf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(quadoplib.__addtf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
 @assume_effects :foldable (-)(x::Float128, y::Float128) =
-    Float128(@ccall(quadoplib.__subtf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(quadoplib.__subtf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
 @assume_effects :foldable (*)(x::Float128, y::Float128) =
-    Float128(@ccall(quadoplib.__multf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(quadoplib.__multf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
 @assume_effects :foldable (/)(x::Float128, y::Float128) =
-    Float128(@ccall(quadoplib.__divtf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(quadoplib.__divtf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
 @assume_effects :foldable (-)(x::Float128) =
-    Float128(@ccall(quadoplib.__negtf2(x::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(quadoplib.__negtf2(x::Cfloat128)::Cfloat128))
 
 # Float128 -> Integer
 @assume_effects :foldable unsafe_trunc(::Type{Int32}, x::Float128) =
-    @ccall(quadoplib.__fixtfsi(x::Cfloat128)::Int32)
+    @quad_ccall(quadoplib.__fixtfsi(x::Cfloat128)::Int32)
 
 @assume_effects :foldable unsafe_trunc(::Type{Int64}, x::Float128) =
-    @ccall(quadoplib.__fixtfdi(x::Cfloat128)::Int64)
+    @quad_ccall(quadoplib.__fixtfdi(x::Cfloat128)::Int64)
 
 @assume_effects :foldable unsafe_trunc(::Type{UInt32}, x::Float128) =
-    @ccall(quadoplib.__fixunstfsi(x::Cfloat128)::UInt32)
+    @quad_ccall(quadoplib.__fixunstfsi(x::Cfloat128)::UInt32)
 
 @assume_effects :foldable unsafe_trunc(::Type{UInt64}, x::Float128) =
-    @ccall(quadoplib.__fixunstfdi(x::Cfloat128)::UInt64)
+    @quad_ccall(quadoplib.__fixunstfdi(x::Cfloat128)::UInt64)
 
 function unsafe_trunc(::Type{UInt128}, x::Float128)
     xu = reinterpret(UInt128,x)
@@ -332,19 +332,19 @@ for f in (:acos, :acosh, :asin, :asinh, :atan, :atanh, :cosh, :cos,
           :sin, :sinh, :sqrt, :tan, :tanh,
           :ceil, :floor, :trunc, )
     @eval @assume_effects :foldable function $f(x::Float128)
-        Float128(@ccall(libquadmath.$(string(f,:q))(x::Cfloat128)::Cfloat128))
+        Float128(@quad_ccall(libquadmath.$(string(f,:q))(x::Cfloat128)::Cfloat128))
     end
 end
 
-@assume_effects :foldable abs(x::Float128) = Float128(@ccall(libquadmath.fabsq(x::Cfloat128)::Cfloat128))
-@assume_effects :foldable round(x::Float128) = Float128(@ccall(libquadmath.rintq(x::Cfloat128)::Cfloat128))
+@assume_effects :foldable abs(x::Float128) = Float128(@quad_ccall(libquadmath.fabsq(x::Cfloat128)::Cfloat128))
+@assume_effects :foldable round(x::Float128) = Float128(@quad_ccall(libquadmath.rintq(x::Cfloat128)::Cfloat128))
 round(x::Float128, r::RoundingMode{:Down}) = floor(x)
 round(x::Float128, r::RoundingMode{:Up}) = ceil(x)
 round(x::Float128, r::RoundingMode{:ToZero}) = round(x)
 
 ## two argument
 @assume_effects :foldable (^)(x::Float128, y::Float128) =
-    Float128(@ccall(libquadmath.powq(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(libquadmath.powq(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
 # circumvent a failure in Base
 function (^)(x::Float128, p::Integer)
@@ -355,15 +355,15 @@ function (^)(x::Float128, p::Integer)
     end
 end
 @assume_effects :foldable copysign(x::Float128, y::Float128) =
-    Float128(@ccall(libquadmath.copysignq(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(libquadmath.copysignq(x::Cfloat128, y::Cfloat128)::Cfloat128))
 @assume_effects :foldable hypot(x::Float128, y::Float128) =
-    Float128(@ccall(libquadmath.hypotq(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(libquadmath.hypotq(x::Cfloat128, y::Cfloat128)::Cfloat128))
 @assume_effects :foldable atan(x::Float128, y::Float128) =
-    Float128(@ccall(libquadmath.atan2q(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(libquadmath.atan2q(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
 Base.Integer(x::Float128) = Int(x)
 @assume_effects :foldable Base.rem(x::Float128, y::Float128) =
-    Float128(@ccall(libquadmath.remainderq(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(libquadmath.remainderq(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
 sincos(x::Float128) = (sin(x), cos(x))
 
@@ -372,12 +372,12 @@ sincos(x::Float128) = (sin(x), cos(x))
     # disable fma on Windows until rounding mode issue fixed
     # https://github.com/JuliaMath/Quadmath.jl/issues/31
     @assume_effects :foldable fma(x::Float128, y::Float128, z::Float128) =
-        Float128(@ccall(libquadmath.fmaq(x::Cfloat128, y::Cfloat128, z::Cfloat128)::Cfloat128))
+        Float128(@quad_ccall(libquadmath.fmaq(x::Cfloat128, y::Cfloat128, z::Cfloat128)::Cfloat128))
 end
 
-@assume_effects :foldable isnan(x::Float128) = 0 != @ccall(libquadmath.isnanq(x::Cfloat128)::Cint)
-@assume_effects :foldable isinf(x::Float128) = 0 != @ccall(libquadmath.isinfq(x::Cfloat128)::Cint)
-@assume_effects :foldable isfinite(x::Float128) = 0 != @ccall(libquadmath.finiteq(x::Cfloat128)::Cint)
+@assume_effects :foldable isnan(x::Float128) = 0 != @quad_ccall(libquadmath.isnanq(x::Cfloat128)::Cint)
+@assume_effects :foldable isinf(x::Float128) = 0 != @quad_ccall(libquadmath.isinfq(x::Cfloat128)::Cint)
+@assume_effects :foldable isfinite(x::Float128) = 0 != @quad_ccall(libquadmath.finiteq(x::Cfloat128)::Cint)
 
 isinteger(x::Float128) = isfinite(x) && x === trunc(x)
 
@@ -402,14 +402,14 @@ typemax(::Type{Float128}) = Inf128
 typemin(::Type{Float128}) = -Inf128
 
 @assume_effects :foldable ldexp(x::Float128, n::Cint) =
-    Float128(@ccall(libquadmath.ldexpq(x::Cfloat128, n::Cint)::Cfloat128))
+    Float128(@quad_ccall(libquadmath.ldexpq(x::Cfloat128, n::Cint)::Cfloat128))
 ldexp(x::Float128, n::Integer) =
     ldexp(x, clamp(n, typemin(Cint), typemax(Cint)) % Cint)
 
 
 @assume_effects :foldable function frexp(x::Float128)
     ri = Ref{Cint}()
-    f = Float128(@ccall(libquadmath.frexpq(x::Cfloat128, ri::Ptr{Cint})::Cfloat128))
+    f = Float128(@quad_ccall(libquadmath.frexpq(x::Cfloat128, ri::Ptr{Cint})::Cfloat128))
     return f, Int(ri[])
 end
 
@@ -613,13 +613,13 @@ end
 
 # TODO: need to do this better
 function parse(::Type{Float128}, s::AbstractString)
-    Float128(@ccall(libquadmath.strtoflt128(s::Cstring, C_NULL::Ptr{Ptr{Cchar}})::Cfloat128))
+    Float128(@quad_ccall(libquadmath.strtoflt128(s::Cstring, C_NULL::Ptr{Ptr{Cchar}})::Cfloat128))
 end
 
 function string(x::Float128)
     lng = 64
     buf = Array{UInt8}(undef, lng + 1)
-    lng = @ccall(libquadmath.quadmath_snprintf(buf::Ptr{UInt8}, (lng+1)::Csize_t, "%.35Qe"::Ptr{UInt8}, x::(Cfloat128...))::Cint)
+    lng = @quad_ccall(libquadmath.quadmath_snprintf(buf::Ptr{UInt8}, (lng+1)::Csize_t, "%.35Qe"::Ptr{UInt8}, x::(Cfloat128...))::Cint)
     return String(resize!(buf, lng))
 end
 
