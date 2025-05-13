@@ -82,38 +82,19 @@ end
 # and passed on the xmm registers, matching the x86_64 ABI for __float128.
 const Cfloat128 = NTuple{2,VecElement{Float64}}
 
-struct Float128 <: AbstractFloat
-    data::Cfloat128
-    function Float128(data::Cfloat128)
-        new(data)
-    end
-end
+primitive type Float128 <: AbstractFloat 128 end
+Float128(data::Cfloat128) = reinterpret(Float128, data)
+
 convert(::Type{Float128}, x::Number) = Float128(x)
 
 const ComplexF128 = Complex{Float128}
 
-Base.cconvert(::Type{Cfloat128}, x::Float128) = x.data
-Base.cconvert(::Type{Ref{Cfloat128}}, x::Float128) = Ref{Cfloat128}(x.data)
-
+Base.cconvert(::Type{Cfloat128}, x::Float128) = reinterpret(Cfloat128, x)
+Base.cconvert(::Type{Ref{Cfloat128}}, x::Float128) = Ref(Cfloat128(x))
 
 # reinterpret
-function reinterpret(::Type{UInt128}, x::Float128)
-    hi = reinterpret(UInt64, x.data[2].value)
-    lo = reinterpret(UInt64, x.data[1].value)
-    UInt128(hi) << 64 | lo
-end
-function reinterpret(::Type{Float128}, x::UInt128)
-    fhi = reinterpret(Float64, (x >> 64) % UInt64)
-    flo = reinterpret(Float64, x % UInt64)
-    Float128((VecElement(flo), VecElement(fhi)))
-end
 reinterpret(::Type{Unsigned}, x::Float128) = reinterpret(UInt128, x)
 reinterpret(::Type{Signed}, x::Float128) = reinterpret(Int128, x)
-
-reinterpret(::Type{Int128}, x::Float128) =
-    reinterpret(Int128, reinterpret(UInt128, x))
-reinterpret(::Type{Float128}, x::Int128) =
-    reinterpret(Float128, reinterpret(UInt128, x))
 
 sign_mask(::Type{Float128}) =        0x8000_0000_0000_0000_0000_0000_0000_0000
 exponent_mask(::Type{Float128}) =    0x7fff_0000_0000_0000_0000_0000_0000_0000
@@ -481,20 +462,10 @@ end
 
 function BigFloat(x::Float128; precision=precision(BigFloat))
     if !isfinite(x) || iszero(x)
-        @static if VERSION < v"1.1"
-            return BigFloat(Float64(x), precision)
-        else
-            return BigFloat(Float64(x), precision=precision)
-        end
+        return BigFloat(Float64(x), precision=precision)
     end
 
-    @static if VERSION < v"1.1"
-        b = setprecision(BigFloat, max(precision,113)) do
-            BigFloat()
-        end
-    else
-        b = BigFloat(precision=max(precision,113))
-    end
+    b = BigFloat(precision=max(precision,113))
 
     y, k = frexp(x)
     b.exp = Clong(k)
@@ -514,16 +485,7 @@ function BigFloat(x::Float128; precision=precision(BigFloat))
     end
 
     if precision < 113
-        @static if VERSION < v"1.1"
-            b2 = setprecision(BigFloat, precision) do
-                BigFloat()
-            end
-            ccall((:mpfr_set, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32),
-                  b2, b, MPFR.ROUNDING_MODE[])
-            return b2
-        else
-            return BigFloat(b, precision=precision)
-        end
+        return BigFloat(b, precision=precision)
     else
         return b
     end
@@ -545,16 +507,7 @@ function Float128(x::BigFloat)
         z = reinterpret(Float128, UInt128(0))
     end
 
-    @static if VERSION < v"1.1"
-        y = setprecision(BigFloat, prec) do
-            BigFloat()
-        end
-        ccall((:mpfr_set, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32),
-                  y, x, MPFR.ROUNDING_MODE[])
-    else
-        y = BigFloat(x, precision=prec)
-    end
-
+    y = BigFloat(x, precision=prec)
     u = zero(UInt128)
     i = cld(prec, sizeof(MPFR.Limb)*8)
     j = 113
@@ -574,13 +527,7 @@ function BigInt(x::Float128)
     BigInt(BigFloat(x, precision=precision(Float128)))
 end
 function Float128(x::BigInt)
-    @static if VERSION < v"1.1"
-        y = setprecision(BigFloat, precision(Float128)) do
-            BigFloat(x)
-        end
-    else
-        y = BigFloat(x, precision=precision(Float128))
-    end
+    y = BigFloat(x, precision=precision(Float128))
     Float128(y)
 end
 
