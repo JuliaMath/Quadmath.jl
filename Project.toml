@@ -1,17 +1,12 @@
 name = "Quadmath"
 uuid = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
-version = "1.0.0"
+version = "0.5.14"
 
 [deps]
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-
-[weakdeps]
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
-
-[extensions]
-QuadMathSpecialFunctionsExt = ["SpecialFunctions"]
 
 [compat]
 Aqua = "0.6"
@@ -20,7 +15,10 @@ Printf = "<0.0.1, 1"
 Random = "<0.0.1, 1"
 SpecialFunctions = "2.0"
 Test = "<0.0.1, 1"
-julia = "1.10"
+julia = "1.6"
+
+[extensions]
+QuadmathSpecialFunctionsExt = ["SpecialFunctions"]
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
@@ -29,3 +27,6 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Aqua", "Test", "SpecialFunctions"]
+
+[weakdeps]
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"

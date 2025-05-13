@@ -1,4 +1,4 @@
-module QuadMathSpecialFunctionsExt
+module QuadmathSpecialFunctionsExt
 
 using Quadmath: libquadmath, Float128, Cfloat128, @quad_ccall
 import SpecialFunctions
