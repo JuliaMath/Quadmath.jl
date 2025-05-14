@@ -139,67 +139,28 @@ Float128(x::Base.TwicePrecision{Float64}) =
     Float128(x.hi) + Float128(x.lo)
 
 # integer -> Float128
-@assume_effects :foldable Float128(x::Int32) =
-    Float128(@quad_ccall(quadoplib.__floatsitf(x::Int32)::Cfloat128))
-
-@assume_effects :foldable Float128(x::UInt32) =
-    Float128(@quad_ccall(quadoplib.__floatunsitf(x::UInt32)::Cfloat128))
-
-@assume_effects :foldable Float128(x::Int64) =
-    Float128(@quad_ccall(quadoplib.__floatditf(x::Int64)::Cfloat128))
-
-@assume_effects :foldable Float128(x::UInt64) =
-    Float128(@quad_ccall(quadoplib.__floatunditf(x::UInt64)::Cfloat128))
-
-Float128(x::Int16) = Float128(Int32(x))
-Float128(x::Int8) = Float128(Int32(x))
-Float128(x::UInt16) = Float128(UInt32(x))
-Float128(x::UInt8) = Float128(UInt32(x))
-
-function Float128(x::UInt128)
-    x == 0 && return Float128(0.0)
-    n = 128-leading_zeros(x) # ndigits0z(x,2)
-    if n <= 113
+function _Float128_bits(x::T) where T<:Base.BitUnsigned
+    n = 8*sizeof(T)-leading_zeros(x) # Base.top_set_bit(x)
+    if n <= 113 # not enough significand to need to care about rounding
         y = ((x % UInt128) << (113-n)) & significand_mask(Float128)
     else
         y = ((x >> (n-114)) % UInt128) & 0x0001_ffff_ffff_ffff_ffff_ffff_ffff_ffff # keep 1 extra bit
         y = (y+1)>>1 # round, ties up (extra leading bit in case of next exponent)
         y &= ~UInt128(trailing_zeros(x) == (n-114)) # fix last bit to round to even
     end
-    d = ((n+16382) % UInt128) << 112
-    # reinterpret(Float128, d + y)
-    d += y
-    if Sys.iswindows()
-        return reinterpret(Float128,d)
-    else
-        y1 = reinterpret(Float64,UInt64(d >> 64))
-        y2 = reinterpret(Float64,(d % UInt64))
-        return Float128((VecElement(y2),VecElement(y1)))
-    end
+    d = ((n+exponent_bias(Float128)-1) % UInt128) << significand_bits(Float128)
+    return d + y
+end
+function Float128(x::T) where T<:Base.BitUnsigned
+    iszero(x) && return reinterpret(Float128, UInt128(0))
+    reinterpret(Float128, _Float128_bits(x))
 end
 
-function Float128(x::Int128)
-    x == 0 && return 0.0
-    s = reinterpret(UInt128,x) & sign_mask(Float128) # sign bit
-    x = abs(x) % UInt128
-    n = 128-leading_zeros(x) # ndigits0z(x,2)
-    if n <= 113
-        y = ((x % UInt128) << (113-n)) & significand_mask(Float128)
-    else
-        y = ((x >> (n-114)) % UInt128) & 0x0001_ffff_ffff_ffff_ffff_ffff_ffff_ffff # keep 1 extra bit
-        y = (y+1)>>1 # round, ties up (extra leading bit in case of next exponent)
-        y &= ~UInt128(trailing_zeros(x) == (n-114)) # fix last bit to round to even
-    end
-    d = ((n+16382) % UInt128) << 112
-    # reinterpret(Float128, s | d + y)
-    d = s | d + y
-    if Sys.iswindows()
-        return reinterpret(Float128,d)
-    else
-        y1 = reinterpret(Float64,UInt64(d >> 64))
-        y2 = reinterpret(Float64,(d % UInt64))
-        Float128((VecElement(y2),VecElement(y1)))
-    end
+function Float128(x::T) where T<:Base.BitSigned
+    iszero(x) && return reinterpret(Float128, UInt128(0))
+    s = UInt128(signbit(x)) << 127 # sign bit
+    ux = abs(x) % Unsigned # the % Unsigned doesn't care that abs(typemin) == typemin
+    reinterpret(Float128, s|_Float128_bits(ux))
 end
 
 # Float128 -> integer requires arithmetic, so is below
