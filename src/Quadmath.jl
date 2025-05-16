@@ -198,8 +198,10 @@ Float128(x::Bool) = x ? Float128(1) : Float128(0)
 @assume_effects :foldable (/)(x::Float128, y::Float128) =
     Float128(@quad_ccall(quadoplib.__divtf3(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
-@assume_effects :foldable (-)(x::Float128) =
-    Float128(@quad_ccall(quadoplib.__negtf2(x::Cfloat128)::Cfloat128))
+function (-)(x::Float128)
+    # xor by sign
+    reinterpret(Float128, reinterpret(UInt128, x) ⊻ sign_mask(Float128))
+end
 
 # Float128 -> Integer
 function unsafe_trunc(::Type{T}, x::Float128) where T<:Base.BitUnsigned
@@ -296,7 +298,7 @@ end
 
 function abs(x::Float128)
     # mask out sign
-    reinterpret(Float128, reinterpret(UInt128, x)&(~(UInt128(1)<<127)))
+    reinterpret(Float128, reinterpret(UInt128, x)&(~sign_mask(Float128)))
 end
 @assume_effects :foldable round(x::Float128) = Float128(@quad_ccall(libquadmath.rintq(x::Cfloat128)::Cfloat128))
 round(x::Float128, r::RoundingMode{:Down}) = floor(x)
@@ -329,6 +331,16 @@ Base.Integer(x::Float128) = Int(x)
 sincos(x::Float128) = (sin(x), cos(x))
 
 ## misc
+
+"""
+    Inf128
+
+Positive infinity of type [`Float128`](@ref).
+"""
+const Inf128 = reinterpret(Float128, exponent_mask(Float128))
+typemax(::Type{Float128}) = Inf128
+typemin(::Type{Float128}) = -Inf128
+
 @static if !Sys.iswindows()
     # disable fma on Windows until rounding mode issue fixed
     # https://github.com/JuliaMath/Quadmath.jl/issues/31
@@ -337,9 +349,7 @@ sincos(x::Float128) = (sin(x), cos(x))
 end
 
 function isinf(x::Float128)
-    xu = reinterpret(UInt128, x)
-    # xu must be either 0x7fff_0000... or 0xffff_0000...
-    return xu in (exponent_mask(Float128), exponent_mask(Float128)&~(UInt128(1)<<127))
+    return x===Inf128 || x===-Inf128
 end
 function isfinite(x::Float128)
     xu = reinterpret(UInt128, x)
@@ -359,15 +369,6 @@ eps(::Type{Float128}) = reinterpret(Float128, 0x3f8f_0000_0000_0000_0000_0000_00
 floatmin(::Type{Float128}) = reinterpret(Float128, 0x0001_0000_0000_0000_0000_0000_0000_0000)
 floatmax(::Type{Float128}) = reinterpret(Float128, 0x7ffe_ffff_ffff_ffff_ffff_ffff_ffff_ffff)
 maxintfloat(::Type{Float128}) = Float128(0x0002_0000_0000_0000_0000_0000_0000_0000)
-
-"""
-    Inf128
-
-Positive infinity of type [`Float128`](@ref).
-"""
-const Inf128 = reinterpret(Float128, 0x7fff_0000_0000_0000_0000_0000_0000_0000)
-typemax(::Type{Float128}) = Inf128
-typemin(::Type{Float128}) = -Inf128
 
 @assume_effects :foldable ldexp(x::Float128, n::Cint) =
     Float128(@quad_ccall(libquadmath.ldexpq(x::Cfloat128, n::Cint)::Cfloat128))
