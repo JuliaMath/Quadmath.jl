@@ -186,14 +186,15 @@ end
 end
 
 @testset "string conversion" begin
-    for (f, s_expected) in [(3.0, "Float128(3.0)"),
+    for (f, s_expected) in [(3.0, "Float128(3)"),
                             (Inf, "Inf128"),
-                            (NaN, "NaN128"),]
+                            (NaN, "NaN128"),
+                            (1e300, "Float128(1.0000000000000000525047602552044202e+300)"),]
         iob = IOBuffer()
         show(iob, Float128(f))
         s = String(take!(iob))
         @test s == s_expected
-        @test string(Float128(f)) == string(f)
+        @test isequal(parse(Float128, string(Float128(f))), Float128(f))
     end
     @test parse(Float128,"3.0") == Float128(3.0)
 end

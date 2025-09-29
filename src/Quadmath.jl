@@ -558,22 +558,24 @@ function parse(::Type{Float128}, s::AbstractString)
     Float128(@quad_ccall(libquadmath.strtoflt128(s::Cstring, C_NULL::Ptr{Ptr{Cchar}})::Cfloat128))
 end
 
-using Base.Ryu: writeshortest
 function string(x::Float128)
-    buf = Base.StringVector(64)
-    pos = writeshortest(buf, 1, x)
-    return String(resize!(buf, pos - 1))
+    lng = 64
+    buf = Array{UInt8}(undef, lng + 1)
+    lng = @quad_ccall(libquadmath.quadmath_snprintf(buf::Ptr{UInt8}, (lng+1)::Csize_t, "%.35Qg"::Ptr{UInt8}, x::(Cfloat128...))::Cint)
+    return String(resize!(buf, lng))
 end
+
 function show(io::IO, x::Float128)
-    buf = Base.StringVector(64)
-    pos = writeshortest(buf, 1, x)
     if isfinite(x)
         write(io, "Float128(")
-        write(io, resize!(buf, pos - 1))
+        write(io, string(x))
         write(io, ')')
+    elseif x==Inf128
+        write(io, "Inf128")
+    elseif x==-Inf128
+        write(io, "-Inf128")
     else
-        write(io, resize!(buf, pos - 1))
-        write(io, "128")
+        write(io, "NaN128")
     end
     return
 end
