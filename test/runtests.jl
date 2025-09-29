@@ -186,10 +186,15 @@ end
 end
 
 @testset "string conversion" begin
-    s = string(Float128(3.0))
-    p = r"3\.0+e\+0+"
-    m = match(p, s)
-    @test (m != nothing) && (m.match == s)
+    for (f, s_expected) in [(3.0, "Float128(3.0)"),
+                            (Inf, "Inf128"),
+                            (NaN, "NaN128"),]
+        iob = IOBuffer()
+        show(iob, Float128(f))
+        s = String(take!(iob))
+        @test s == s_expected
+        @test string(Float128(f)) == string(f)
+    end
     @test parse(Float128,"3.0") == Float128(3.0)
 end
 

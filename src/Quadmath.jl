@@ -1,7 +1,7 @@
 module Quadmath
 using Compat: @assume_effects
 
-export Float128, ComplexF128, Inf128
+export Float128, ComplexF128, Inf128, NaN128
 
 import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           reinterpret, sign_mask, exponent_mask, exponent_one, exponent_half,
@@ -341,6 +341,13 @@ const Inf128 = reinterpret(Float128, exponent_mask(Float128))
 typemax(::Type{Float128}) = Inf128
 typemin(::Type{Float128}) = -Inf128
 
+"""
+    NaN128
+
+A not-a-number value of type [`Float128`](@ref).
+"""
+const NaN128 = reinterpret(Float128, UInt128(0x7fff8)<<108)
+
 @static if !Sys.iswindows()
     # disable fma on Windows until rounding mode issue fixed
     # https://github.com/JuliaMath/Quadmath.jl/issues/31
@@ -551,15 +558,26 @@ function parse(::Type{Float128}, s::AbstractString)
     Float128(@quad_ccall(libquadmath.strtoflt128(s::Cstring, C_NULL::Ptr{Ptr{Cchar}})::Cfloat128))
 end
 
+using Base.Ryu: writeshortest
 function string(x::Float128)
-    lng = 64
-    buf = Array{UInt8}(undef, lng + 1)
-    lng = @quad_ccall(libquadmath.quadmath_snprintf(buf::Ptr{UInt8}, (lng+1)::Csize_t, "%.35Qe"::Ptr{UInt8}, x::(Cfloat128...))::Cint)
-    return String(resize!(buf, lng))
+    buf = Base.StringVector(64)
+    pos = writeshortest(buf, 1, x)
+    return String(resize!(buf, pos - 1))
 end
-
+function show(io::IO, x::Float128)
+    buf = Base.StringVector(64)
+    pos = writeshortest(buf, 1, x)
+    if isfinite(x)
+        write(io, "Float128(")
+        write(io, resize!(buf, pos - 1))
+        write(io, ')')
+    else
+        write(io, resize!(buf, pos - 1))
+        write(io, "128")
+    end
+    return
+end
 print(io::IO, b::Float128) = print(io, string(b))
-show(io::IO, b::Float128) = print(io, string(b))
 
 include("printf.jl")
 
