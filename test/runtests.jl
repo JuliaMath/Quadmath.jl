@@ -194,6 +194,9 @@ end
         show(iob, Float128(f))
         s = String(take!(iob))
         @test s == s_expected
+        if !isfinite(f)
+            @test string(Float128(f)) == string(f)
+        end
         @test isequal(parse(Float128, string(Float128(f))), Float128(f))
     end
     @test parse(Float128,"3.0") == Float128(3.0)

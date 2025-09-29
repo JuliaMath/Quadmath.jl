@@ -559,10 +559,19 @@ function parse(::Type{Float128}, s::AbstractString)
 end
 
 function string(x::Float128)
-    lng = 64
-    buf = Array{UInt8}(undef, lng + 1)
-    lng = @quad_ccall(libquadmath.quadmath_snprintf(buf::Ptr{UInt8}, (lng+1)::Csize_t, "%.35Qg"::Ptr{UInt8}, x::(Cfloat128...))::Cint)
-    return String(resize!(buf, lng))
+    if isfinite(x)
+        lng = 64
+        buf = Array{UInt8}(undef, lng + 1)
+        lng = @quad_ccall(libquadmath.quadmath_snprintf(buf::Ptr{UInt8}, (lng+1)::Csize_t, "%.35Qg"::Ptr{UInt8}, x::(Cfloat128...))::Cint)
+        return String(resize!(buf, lng))
+    elseif x==Inf128
+        return "Inf"
+    elseif x==-Inf128
+        return "-Inf"
+    else
+        return "NaN"
+    end
+
 end
 
 function show(io::IO, x::Float128)
