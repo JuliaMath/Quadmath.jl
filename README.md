@@ -10,7 +10,7 @@ Quadmath currently works on x86_64 Linux, macOS, and Windows.
 
 - It may require a new-ish version of gcc which supports `__float128` type.
 - It has not been tested on 32 bit Linux.
-- It does not work on ARM due to the lack of libquadmath support for that platform.
+- It does not work on (32-bit) ARM due to the lack of libquadmath support for that platform.
 
 ## Installation
 
