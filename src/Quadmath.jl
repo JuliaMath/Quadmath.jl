@@ -226,14 +226,15 @@ for Ti in (UInt8, UInt16, UInt32, UInt64, UInt128)
     # `Float128(typemax(Ti))+1` is exactly representable
     @eval begin
         function trunc(::Type{$Ti},x::Float128)
-            if !signbit(x) && x < Float128(typemax($Ti)) + one(Float128)
+            if (!signbit(x) && x < Float128(typemax($Ti)) + one(Float128)) || (x == 0)
                 return unsafe_trunc($Ti,x)
             else
                 throw(InexactError(:trunc, $Ti, x))
             end
         end
         function (::Type{$Ti})(x::Float128)
-            if (!signbit(x) && x <= Float128(typemax($Ti))) && (round(x, RoundToZero) == x)
+            if ((!signbit(x) && x <= Float128(typemax($Ti))) && (round(x, RoundToZero) == x)
+                || (x == 0))
                 return unsafe_trunc($Ti,x)
             else
                 throw(InexactError($(Expr(:quote,Ti.name.name)), $Ti, x))
@@ -303,7 +304,8 @@ end
 @assume_effects :foldable round(x::Float128) = Float128(@quad_ccall(libquadmath.rintq(x::Cfloat128)::Cfloat128))
 round(x::Float128, r::RoundingMode{:Down}) = floor(x)
 round(x::Float128, r::RoundingMode{:Up}) = ceil(x)
-round(x::Float128, r::RoundingMode{:ToZero}) = round(x)
+round(x::Float128, r::RoundingMode{:Nearest}) = round(x)
+round(x::Float128, r::RoundingMode{:ToZero}) = trunc(x)
 
 ## two argument
 @assume_effects :foldable (^)(x::Float128, y::Float128) =
@@ -498,8 +500,10 @@ function Float128(x::BigFloat)
         prec = 113 + (k + 16381)
     elseif k == -16381-113 && abs(y) > 0.5
         z = reinterpret(Float128, UInt128(1))
+        return copysign(z,x)
     else
         z = reinterpret(Float128, UInt128(0))
+        return copysign(z,x)
     end
 
     y = BigFloat(x, precision=prec)
