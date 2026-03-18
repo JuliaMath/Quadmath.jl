@@ -289,6 +289,7 @@ end
     @test round(Float128(pi), digits = 3, base = 5) ≈ 3.144
 end
 
+if VERSION >= v"1.11"
 @testset "rounding floats with specified return type #50778" begin
     @test round(Float128, Float128(1.2)) === q1
 end
@@ -306,4 +307,4 @@ end
         @test prevfloat(f) < i
     end
 end
-
+end
