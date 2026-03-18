@@ -273,5 +273,7 @@ include("specfun.jl")
 
 include("printf.jl")
 
+@testset verbose=true "rounding" include("rounding.jl")
+
 using Aqua
 Aqua.test_all(Quadmath)
