@@ -15,7 +15,7 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 QuadmathSpecialFunctionsExt = ["SpecialFunctions"]
 
 [compat]
-Aqua = "0.6"
+Aqua = "0.6, 0.8"
 Compat = "4.4"
 Printf = "<0.0.1, 1"
 Random = "<0.0.1, 1"
