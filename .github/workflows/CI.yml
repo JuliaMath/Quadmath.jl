@@ -20,6 +20,18 @@ jobs:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
+        arch:
+          - x64
+          - aarch64
+        exclude:
+          # macOS-latest is Apple Silicon (arm64), so x64 is not available there.
+          - os: macOS-latest
+            arch: x64
+          # ubuntu-latest and windows-latest runners are x64-only.
+          - os: ubuntu-latest
+            arch: aarch64
+          - os: windows-latest
+            arch: aarch64
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v3
