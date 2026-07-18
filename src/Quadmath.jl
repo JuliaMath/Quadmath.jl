@@ -356,6 +356,7 @@ const NaN128 = reinterpret(Float128, UInt128(0x7fff8)<<108)
     @assume_effects :foldable fma(x::Float128, y::Float128, z::Float128) =
         Float128(@quad_ccall(libquadmath.fmaq(x::Cfloat128, y::Cfloat128, z::Cfloat128)::Cfloat128))
 end
+include("fma128.jl")
 
 function isinf(x::Float128)
     return x===Inf128 || x===-Inf128
