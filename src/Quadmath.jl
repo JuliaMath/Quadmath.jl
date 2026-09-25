@@ -1,5 +1,5 @@
 module Quadmath
-using Compat: @assume_effects
+using Base: @assume_effects
 
 export Float128, ComplexF128, Inf128, NaN128
 
@@ -21,7 +21,6 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           Int32, Int64, Float16, Float32, Float64, BigFloat, BigInt
 
 using Base.Meta
-using Random
 
 # On AArch64, long double is IEEE binary128 and we don't have a separate libquadmath
 const USE_LONG_DOUBLE = Sys.ARCH === :aarch64 && Sys.isunix() && !Sys.isapple()
@@ -570,14 +569,6 @@ function decompose(x::Float128)::Tuple{Int128, Int, Int}
     s, e - 16495 + (e == 0), d
 end
 
-function Random.rand(rng::AbstractRNG, s::Random.SamplerTrivial{Random.CloseOpen01{Float128}})
-    u = rand(rng, UInt128)
-    x = (reinterpret(Float128, u & Base.significand_mask(Float128)
-                     | Base.exponent_one(Float128))
-         - one(Float128))
-    return x
-end
-
 # TODO: need to do this better
 function parse(::Type{Float128}, s::AbstractString)
     Float128(@quad_ccall(@autoql(strto)(s::Cstring, C_NULL::Ptr{Ptr{Cchar}})::Cfloat128))
@@ -616,9 +607,4 @@ function show(io::IO, x::Float128)
 end
 print(io::IO, b::Float128) = print(io, string(b))
 
-include("printf.jl")
-
-if !isdefined(Base, :get_extension)
-    include("../ext/QuadmathSpecialFunctionsExt.jl")
-end
 end # module Quadmath
