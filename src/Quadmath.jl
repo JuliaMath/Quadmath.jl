@@ -1,5 +1,5 @@
 module Quadmath
-using Compat: @assume_effects
+using Base: @assume_effects
 
 export Float128, ComplexF128, Inf128, NaN128
 
@@ -607,9 +607,4 @@ function show(io::IO, x::Float128)
 end
 print(io::IO, b::Float128) = print(io, string(b))
 
-if !isdefined(Base, :get_extension)
-    include("../ext/QuadmathSpecialFunctionsExt.jl")
-    include("../ext/QuadmathRandomExt.jl")
-    include("../ext/QuadmathPrintfExt.jl")
-end
 end # module Quadmath
