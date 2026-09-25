@@ -607,10 +607,9 @@ function show(io::IO, x::Float128)
 end
 print(io::IO, b::Float128) = print(io, string(b))
 
-include("printf.jl")
-
 if !isdefined(Base, :get_extension)
     include("../ext/QuadmathSpecialFunctionsExt.jl")
     include("../ext/QuadmathRandomExt.jl")
+    include("../ext/QuadmathPrintfExt.jl")
 end
 end # module Quadmath

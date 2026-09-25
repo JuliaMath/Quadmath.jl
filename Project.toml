@@ -9,11 +9,13 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
 [weakdeps]
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
 [extensions]
 QuadmathSpecialFunctionsExt = ["SpecialFunctions"]
+QuadmathPrintfExt = ["Printf"]
 QuadmathRandomExt = ["Random"]
 
 [compat]
@@ -28,8 +30,9 @@ julia = "1.6"
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "Test", "SpecialFunctions", "Random"]
+test = ["Aqua", "Test", "SpecialFunctions", "Random", "Printf"]
