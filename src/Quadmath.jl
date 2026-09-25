@@ -20,7 +20,11 @@ import Base: (*), +, -, /,  <, <=, ==, ^, convert,
           floatmin, floatmax, precision, signbit, maxintfloat,
           Int32, Int64, Float16, Float32, Float64, BigFloat, BigInt
 
+using Base.Meta
 using Random
+
+# On AArch64, long double is IEEE binary128 and we don't have a separate libquadmath
+const USE_LONG_DOUBLE = Sys.ARCH === :aarch64 && Sys.isunix() && !Sys.isapple()
 
 if Sys.isapple()
     if Sys.ARCH == :x86_64
@@ -31,7 +35,11 @@ if Sys.isapple()
     const libquadmath = "libquadmath.0"
 elseif Sys.isunix()
     const quadoplib = "libgcc_s.so.1"
-    const libquadmath = "libquadmath.so.0"
+    if Sys.ARCH === :aarch64
+        const libquadmath = Base.Math.libm
+    else
+        const libquadmath = "libquadmath.so.0"
+    end
 elseif Sys.iswindows()
     if Sys.WORD_SIZE == 64
         const quadoplib = "libgcc_s_seh-1.dll"
@@ -41,40 +49,52 @@ elseif Sys.iswindows()
     const libquadmath = "libquadmath-0.dll"
 end
 
-macro quad_ccall(expr)
-    @assert expr isa Expr && expr.head == :(::)
-    ret_type = expr.args[2]
+# When using libm instead of libquadmath, we need to call e.g. sinl instead of sinq
+if USE_LONG_DOUBLE
+    const namesuffix = :l
+else
+    const namesuffix = :q
+end
 
-    expr_call = expr.args[1]
-    @assert expr_call isa Expr && expr_call.head == :call
+macro quad_ccall(expr)
+    @assert isexpr(expr, :(::))
+    expr_call, ret_type = expr.args
+
+    @assert isexpr(expr_call, :call)
 
     expr_fname = expr_call.args[1]
 
     if expr_fname isa Symbol
         fname = QuoteNode(expr_fname)
-    elseif expr_fname isa Expr && expr_fname.head == :.
+    elseif isexpr(expr_fname, :.)
         fname = :(($(expr_fname.args[2]), $(esc(expr_fname.args[1]))))
+    elseif isexpr(expr_fname, :macrocall, 3) && expr_fname.args[1] === Symbol("@autoql")
+        if expr_fname.args[3] === :strto
+            suffix = namesuffix === :q ? :flt128 : :ld
+        else
+            suffix = namesuffix
+        end
+        fname = Expr(:tuple, QuoteNode(Symbol(expr_fname.args[3], suffix)), :libquadmath)
     end
 
     expr_args = expr_call.args[2:end]
 
-    @assert all(ex isa Expr && ex.head == :(::) for ex in expr_args)
+    @assert all(ex -> isexpr(ex, :(::)), expr_args)
 
     arg_names = [ex.args[1] for ex in expr_args]
     arg_types = [ex.args[2] for ex in expr_args]
 
-    if Sys.isunix()
+    if Sys.isunix() || ret_type !== :Cfloat128
         :(ccall($fname, $(esc(ret_type)), ($(esc.(arg_types)...),), $(esc.(arg_names)...)))
     else
-        if ret_type == :Cfloat128
-            quote
-                r = Ref{Cfloat128}()
+        ex = quote
+            let r = Ref{Cfloat128}()
                 ccall($fname, Cvoid, (Ref{Cfloat128}, $(esc.(arg_types)...),), r, $(esc.(arg_names)...))
                 r[]
             end
-        else
-            :(ccall($fname, $(esc(ret_type)), ($(esc.(arg_types)...),), $(esc.(arg_names)...)))
         end
+        # `ex` is a block expression, the first argument of which is the line info; just get the `let`
+        ex.args[2]
     end
 end
 
@@ -293,7 +313,7 @@ for f in (:acos, :acosh, :asin, :asinh, :atan, :atanh, :cosh, :cos,
           :sin, :sinh, :sqrt, :tan, :tanh,
           :ceil, :floor, :trunc, )
     @eval @assume_effects :foldable function $f(x::Float128)
-        Float128(@quad_ccall(libquadmath.$(string(f,:q))(x::Cfloat128)::Cfloat128))
+        Float128(@quad_ccall(@autoql($f)(x::Cfloat128)::Cfloat128))
     end
 end
 
@@ -301,7 +321,7 @@ function abs(x::Float128)
     # mask out sign
     reinterpret(Float128, reinterpret(UInt128, x)&(~sign_mask(Float128)))
 end
-@assume_effects :foldable round(x::Float128) = Float128(@quad_ccall(libquadmath.rintq(x::Cfloat128)::Cfloat128))
+@assume_effects :foldable round(x::Float128) = Float128(@quad_ccall(@autoql(rint)(x::Cfloat128)::Cfloat128))
 round(x::Float128, r::RoundingMode{:Down}) = floor(x)
 round(x::Float128, r::RoundingMode{:Up}) = ceil(x)
 round(x::Float128, r::RoundingMode{:Nearest}) = round(x)
@@ -309,7 +329,7 @@ round(x::Float128, r::RoundingMode{:ToZero}) = trunc(x)
 
 ## two argument
 @assume_effects :foldable (^)(x::Float128, y::Float128) =
-    Float128(@quad_ccall(libquadmath.powq(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(@autoql(pow)(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
 # circumvent a failure in Base
 function (^)(x::Float128, p::Integer)
@@ -320,15 +340,15 @@ function (^)(x::Float128, p::Integer)
     end
 end
 @assume_effects :foldable copysign(x::Float128, y::Float128) =
-    Float128(@quad_ccall(libquadmath.copysignq(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(@autoql(copysign)(x::Cfloat128, y::Cfloat128)::Cfloat128))
 @assume_effects :foldable hypot(x::Float128, y::Float128) =
-    Float128(@quad_ccall(libquadmath.hypotq(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(@autoql(hypot)(x::Cfloat128, y::Cfloat128)::Cfloat128))
 @assume_effects :foldable atan(x::Float128, y::Float128) =
-    Float128(@quad_ccall(libquadmath.atan2q(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(@autoql(atan2)(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
 Base.Integer(x::Float128) = Int(x)
 @assume_effects :foldable Base.rem(x::Float128, y::Float128) =
-    Float128(@quad_ccall(libquadmath.remainderq(x::Cfloat128, y::Cfloat128)::Cfloat128))
+    Float128(@quad_ccall(@autoql(remainder)(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
 sincos(x::Float128) = (sin(x), cos(x))
 
@@ -354,7 +374,7 @@ const NaN128 = reinterpret(Float128, UInt128(0x7fff8)<<108)
     # disable fma on Windows until rounding mode issue fixed
     # https://github.com/JuliaMath/Quadmath.jl/issues/31
     @assume_effects :foldable fma(x::Float128, y::Float128, z::Float128) =
-        Float128(@quad_ccall(libquadmath.fmaq(x::Cfloat128, y::Cfloat128, z::Cfloat128)::Cfloat128))
+        Float128(@quad_ccall(@autoql(fma)(x::Cfloat128, y::Cfloat128, z::Cfloat128)::Cfloat128))
 end
 include("fma128.jl")
 
@@ -381,14 +401,14 @@ floatmax(::Type{Float128}) = reinterpret(Float128, 0x7ffe_ffff_ffff_ffff_ffff_ff
 maxintfloat(::Type{Float128}) = Float128(0x0002_0000_0000_0000_0000_0000_0000_0000)
 
 @assume_effects :foldable ldexp(x::Float128, n::Cint) =
-    Float128(@quad_ccall(libquadmath.ldexpq(x::Cfloat128, n::Cint)::Cfloat128))
+    Float128(@quad_ccall(@autoql(ldexp)(x::Cfloat128, n::Cint)::Cfloat128))
 ldexp(x::Float128, n::Integer) =
     ldexp(x, clamp(n, typemin(Cint), typemax(Cint)) % Cint)
 
 
 @assume_effects :foldable function frexp(x::Float128)
     ri = Ref{Cint}()
-    f = Float128(@quad_ccall(libquadmath.frexpq(x::Cfloat128, ri::Ptr{Cint})::Cfloat128))
+    f = Float128(@quad_ccall(@autoql(frexp)(x::Cfloat128, ri::Ptr{Cint})::Cfloat128))
     return f, Int(ri[])
 end
 
@@ -560,23 +580,24 @@ end
 
 # TODO: need to do this better
 function parse(::Type{Float128}, s::AbstractString)
-    Float128(@quad_ccall(libquadmath.strtoflt128(s::Cstring, C_NULL::Ptr{Ptr{Cchar}})::Cfloat128))
+    Float128(@quad_ccall(@autoql(strto)(s::Cstring, C_NULL::Ptr{Ptr{Cchar}})::Cfloat128))
 end
 
-function string(x::Float128)
-    if isfinite(x)
-        lng = 64
-        buf = Array{UInt8}(undef, lng + 1)
-        lng = @quad_ccall(libquadmath.quadmath_snprintf(buf::Ptr{UInt8}, (lng+1)::Csize_t, "%.35Qg"::Ptr{UInt8}, x::(Cfloat128...))::Cint)
-        return String(resize!(buf, lng))
-    elseif x==Inf128
-        return "Inf"
-    elseif x==-Inf128
-        return "-Inf"
-    else
-        return "NaN"
+let (fn, fmt) = USE_LONG_DOUBLE ? (:snprintf, "L") : (:(libquadmath.quadmath_snprintf), "Q")
+    @eval function string(x::Float128)
+        if isfinite(x)
+            lng = 64
+            buf = Array{UInt8}(undef, lng + 1)
+            lng = @quad_ccall($fn(buf::Ptr{UInt8}, (lng+1)::Csize_t, $(string("%.35", fmt, "g"))::Ptr{UInt8}, x::(Cfloat128...))::Cint)
+            return String(resize!(buf, lng))
+        elseif x==Inf128
+            return "Inf"
+        elseif x==-Inf128
+            return "-Inf"
+        else
+            return "NaN"
+        end
     end
-
 end
 
 function show(io::IO, x::Float128)
