@@ -465,7 +465,7 @@ end
 
 Float128(::Irrational{:π}) =  reinterpret(Float128, 0x4000921fb54442d18469898cc51701b8)
 Float128(::Irrational{:ℯ}) =  reinterpret(Float128, 0x40005bf0a8b1457695355fb8ac404e7a)
-Float128(x::Irrational{T}) where {T} = Float128(BigFloat(x))
+Float128(x::AbstractIrrational) = Float128(BigFloat(x))
 
 import Base.MPFR
 
