@@ -202,11 +202,23 @@ end
     @test parse(Float128,"3.0") == Float128(3.0)
 end
 
+struct TwoPi <: AbstractIrrational
+end
+Base.BigFloat(::TwoPi; precision=precision(BigFloat)) =
+    setprecision(() -> 2 * big(π), BigFloat, precision)
+Base.Float64(x::TwoPi) = Float64(big(x))
+
 @testset "irrationals" begin
     tiny = 2eps(Float128(1))
-    @test abs(cos(Float128(pi)) + 1) < tiny
-    @test abs(log(Float128(ℯ)) - 1) < tiny
-    @test abs((2*Float128(MathConstants.golden) - 1)^2 - 5) < 5 * tiny
+    default = precision(BigFloat)
+    for prec in (default, 16)
+        setprecision(BigFloat, prec)
+        @test abs(cos(Float128(pi)) + 1) < tiny
+        @test abs(log(Float128(ℯ)) - 1) < tiny
+        @test abs((2*Float128(MathConstants.golden) - 1)^2 - 5) < 5 * tiny
+        @test abs(cos(Float128(TwoPi())) - 1) < tiny
+    end
+    setprecision(default)
 end
 
 @testset "rationals" begin
