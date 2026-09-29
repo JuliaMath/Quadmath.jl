@@ -346,9 +346,9 @@ end
     Float128(@quad_ccall(@autoql(atan2)(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
 Base.Integer(x::Float128) = Int(x)
-@assume_effects :foldable Base.rem(x::Float128, y::Float128, ::RoundingMode{:Nearest}=RoundNearest) =
+@assume_effects :foldable Base.rem(x::Float128, y::Float128, ::RoundingMode{:Nearest}) =
     Float128(@quad_ccall(@autoql(remainder)(x::Cfloat128, y::Cfloat128)::Cfloat128))
-@assume_effects :foldable Base.rem(x::Float128, y::Float128, ::RoundingMode{:ToZero}) =
+@assume_effects :foldable Base.rem(x::Float128, y::Float128, ::RoundingMode{:ToZero}=RoundToZero) =
     Float128(@quad_ccall(@autoql(fmod)(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
 if VERSION < v"1.14.0-DEV.2070"

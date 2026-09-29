@@ -310,6 +310,10 @@ end
 end
 
 # These tests were copied from Julia. License is MIT: https://julialang.org/license.
+@testset "rounding consistency with Base" begin
+    @test rem(prevfloat(Float128(1)), Float128(1)) == prevfloat(Float128(1))
+    @test mod(prevfloat(Float128(1)), Float128(1)) == prevfloat(Float128(1))
+end
 @testset "rem(::Float128, ::Float128, ::RoundingMode)" begin
     T = Float128
     @test rem(T(1), T(2), RoundToZero)  == 1
