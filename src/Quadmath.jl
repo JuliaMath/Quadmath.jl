@@ -349,7 +349,12 @@ Base.Integer(x::Float128) = Int(x)
 @assume_effects :foldable Base.rem(x::Float128, y::Float128) =
     Float128(@quad_ccall(@autoql(remainder)(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
-sincos(x::Float128) = (sin(x), cos(x))
+function sincos(x::Float128)
+    sin = Ref{Cfloat128}()
+    cos = Ref{Cfloat128}()
+    @quad_ccall(@autoql(sincos)(x::Cfloat128, sin::Ref{Cfloat128}, cos::Ref{Cfloat128})::Cvoid)
+    return (Float128(sin[]), Float128(cos[]))
+end
 
 ## misc
 
