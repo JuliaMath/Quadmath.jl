@@ -17,21 +17,17 @@ jobs:
           - '1'
           - 'nightly'
         os:
-          - ubuntu-latest
-          - macOS-latest
-          - windows-latest
+          - ubuntu-latest     # x86-64
+          - ubuntu-26.04-arm  # aarch64
+          - macOS-latest      # aarch64
+          - macos-26-intel    # x86-64
+          - windows-latest    # x86-64
         arch:
-          - x64
-          - aarch64
-        exclude:
-          # macOS-latest is Apple Silicon (arm64), so x64 is not available there.
-          - os: macOS-latest
-            arch: x64
-          # ubuntu-latest and windows-latest runners are x64-only.
+          - default
+        include:
           - os: ubuntu-latest
-            arch: aarch64
-          - os: windows-latest
-            arch: aarch64
+            arch: x86
+            version: '1'
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
