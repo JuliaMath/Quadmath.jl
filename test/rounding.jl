@@ -308,3 +308,53 @@ end
     end
 end
 end
+
+# These tests were copied from Julia. License is MIT: https://julialang.org/license.
+@testset "rounding consistency with Base" begin
+    @test rem(prevfloat(Float128(1)), Float128(1)) == prevfloat(Float128(1))
+    @test mod(prevfloat(Float128(1)), Float128(1)) == prevfloat(Float128(1))
+end
+@testset "rem(::Float128, ::Float128, ::RoundingMode)" begin
+    T = Float128
+    @test rem(T(1), T(2), RoundToZero)  == 1
+    @test rem(T(1), T(2), RoundNearest) == 1
+    @test rem(T(1), T(2), RoundDown)    == 1
+    @test rem(T(1), T(2), RoundUp)      == -1
+    @test rem(T(1), T(2), RoundFromZero) == -1
+    @test rem(T(1), T(2), RoundNearestTiesUp) == -1
+    @test rem(T(1), T(2), RoundNearestTiesAway) == -1
+    @test rem(T(1.5), T(2), RoundToZero)  == 1.5
+    @test rem(T(1.5), T(2), RoundNearest) == -0.5
+    @test rem(T(1.5), T(2), RoundDown)    == 1.5
+    @test rem(T(1.5), T(2), RoundUp)      == -0.5
+    @test rem(T(1.5), T(2), RoundFromZero) == -0.5
+    @test rem(T(1.5), T(2), RoundNearestTiesUp) == -0.5
+    @test rem(T(1.5), T(2), RoundNearestTiesAway) == -0.5
+    @test rem(T(-1), T(2), RoundToZero)  == -1
+    @test rem(T(-1), T(2), RoundNearest) == -1
+    @test rem(T(-1), T(2), RoundDown)    == 1
+    @test rem(T(-1), T(2), RoundUp)      == -1
+    @test rem(T(-1), T(2), RoundFromZero) == 1
+    @test rem(T(-1), T(2), RoundNearestTiesUp) == -1
+    @test rem(T(-1), T(2), RoundNearestTiesAway) == 1
+    @test rem(T(-1.5), T(2), RoundToZero)  == -1.5
+    @test rem(T(-1.5), T(2), RoundNearest) == 0.5
+    @test rem(T(-1.5), T(2), RoundDown)    == 0.5
+    @test rem(T(-1.5), T(2), RoundUp)      == -1.5
+    @test rem(T(-1.5), T(2), RoundFromZero) == 0.5
+    @test rem(T(-1.5), T(2), RoundNearestTiesUp) == 0.5
+    @test rem(T(-1.5), T(2), RoundNearestTiesAway) == 0.5
+    for mode in [RoundToZero, RoundNearest, RoundDown, RoundUp, RoundFromZero, RoundNearestTiesUp, RoundNearestTiesAway]
+        @test isnan(rem(T(1), T(0), mode))
+        @test isnan(rem(T(Inf), T(2), mode))
+        @test isnan(rem(T(1), T(NaN), mode))
+        @test rem(T(4), floatmin(T) * 2, mode) == 0
+    end
+    @test isequal(rem(nextfloat(typemin(T)), T(2), RoundToZero),  -0.0)
+    @test isequal(rem(nextfloat(typemin(T)), T(2), RoundNearest), -0.0)
+    @test isequal(rem(nextfloat(typemin(T)), T(2), RoundDown),     0.0)
+    @test isequal(rem(nextfloat(typemin(T)), T(2), RoundUp),      -0.0)
+    @test isequal(rem(nextfloat(typemin(T)), T(2), RoundFromZero), 0.0)
+    @test isequal(rem(nextfloat(typemin(T)), T(2), RoundNearestTiesUp), -0.0)
+    @test isequal(rem(nextfloat(typemin(T)), T(2), RoundNearestTiesAway), 0.0)
+end

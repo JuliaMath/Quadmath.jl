@@ -346,8 +346,26 @@ end
     Float128(@quad_ccall(@autoql(atan2)(x::Cfloat128, y::Cfloat128)::Cfloat128))
 
 Base.Integer(x::Float128) = Int(x)
-@assume_effects :foldable Base.rem(x::Float128, y::Float128) =
+@assume_effects :foldable Base.rem(x::Float128, y::Float128, ::RoundingMode{:Nearest}) =
     Float128(@quad_ccall(@autoql(remainder)(x::Cfloat128, y::Cfloat128)::Cfloat128))
+@assume_effects :foldable Base.rem(x::Float128, y::Float128, ::RoundingMode{:ToZero}=RoundToZero) =
+    Float128(@quad_ccall(@autoql(fmod)(x::Cfloat128, y::Cfloat128)::Cfloat128))
+
+if VERSION < v"1.14.0-DEV.2070"
+    # This method was copied from Julia commit 117a6c50f5e, which added a generic method.
+    # License is MIT: https://julialang.org/license.
+    function Base.rem(x::Float128, y::Float128, rnd::Union{typeof(RoundNearestTiesAway),
+                                                           typeof(RoundNearestTiesUp)})
+        r = mod(x, y)
+        isnan(r) && return r
+        if !iszero(r)
+            m, n = abs(r) < floatmax(r)/2 ? abs.((2r, y)) : abs.((r, y/2))
+            m < n && return r
+            m > n && return mod(x, -y)
+        end
+        rnd === RoundNearestTiesUp || signbit(x) == signbit(y) ? mod(x, -y) : r
+    end
+end
 
 sincos(x::Float128) = (sin(x), cos(x))
 
