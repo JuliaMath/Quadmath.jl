@@ -367,7 +367,12 @@ if VERSION < v"1.14.0-DEV.2070"
     end
 end
 
-sincos(x::Float128) = (sin(x), cos(x))
+function sincos(x::Float128)
+    sin = Ref{Cfloat128}()
+    cos = Ref{Cfloat128}()
+    @quad_ccall(@autoql(sincos)(x::Cfloat128, sin::Ref{Cfloat128}, cos::Ref{Cfloat128})::Cvoid)
+    return (Float128(sin[]), Float128(cos[]))
+end
 
 ## misc
 

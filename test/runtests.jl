@@ -143,6 +143,9 @@ end
         if !Sys.iswindows()
             @test fma(x,x,Float128(-1.0)) ≈ Float128(1)
         end
+        @test sin(x) ≈ sin(xd)
+        @test cos(x) ≈ cos(xd)
+        @test all(sincos(x) .≈ (sin(x), cos(x)))
     end
     @testset "complex" begin
         x = sqrt(ComplexF128(1.0 + 1.0im))
