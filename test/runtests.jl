@@ -140,9 +140,7 @@ end
         @test abs(x) == x
         @test hypot(Float128(3),Float128(4)) == Float128(5)
         @test atan(x,x) ≈ Float128(pi) / 4
-        if !Sys.iswindows()
-            @test fma(x,x,Float128(-1.0)) ≈ Float128(1)
-        end
+        @test fma(x,x,Float128(-1.0)) ≈ Float128(1)
         @test sin(x) ≈ sin(xd)
         @test cos(x) ≈ cos(xd)
         @test all(sincos(x) .≈ (sin(x), cos(x)))
